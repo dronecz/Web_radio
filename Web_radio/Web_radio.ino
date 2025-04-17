@@ -65,8 +65,8 @@ lv_display_t *disp;
 lv_color_t *disp_draw_buf;
 
 #include "src\FFT.h"
-#define CANVAS_FFT_WIDTH screenWidth
-#define CANVAS_FFT_HEIGHT 17
+#define CANVAS_FFT_WIDTH 400  //screenWidth
+#define CANVAS_FFT_HEIGHT 80
 Arduino_Canvas *canvasFFT_gfx = new Arduino_Canvas(CANVAS_FFT_WIDTH /* width */, CANVAS_FFT_HEIGHT /* height */, NULL);
 lv_obj_t *ui_CanvasFFT;
 
@@ -276,6 +276,7 @@ void audio_process_i2s(uint32_t *sample, bool *continueI2S) {
     draw_fft_level_meter(canvasFFT_gfx);
     lv_obj_invalidate(ui_CanvasFFT);
     raw_data_idx = 0;
+    Serial.println("FFT processing..");
   }
   *continueI2S = true;
 }
@@ -425,10 +426,19 @@ void setup() {
   LV_DRAW_BUF_DEFINE_STATIC(draw_buff, CANVAS_FFT_WIDTH, CANVAS_FFT_HEIGHT, LV_COLOR_FORMAT_RGB565);
   LV_DRAW_BUF_INIT_STATIC(draw_buff);
   // /*Create a canvas and initialize its palette*/
-  ui_CanvasFFT = lv_canvas_create(ui_Screen1);
+  ui_CanvasFFT = lv_canvas_create(ui_CntnrRadio);
   lv_canvas_set_draw_buf(ui_CanvasFFT, &draw_buff);
-  lv_canvas_fill_bg(ui_CanvasFFT, lv_color_hex3(0xccc), LV_OPA_COVER);
-  lv_obj_center(ui_CanvasFFT);
+  //lv_canvas_set_px(ui_CanvasFFT, 0, 440, lv_color_black(), LV_OPA_COVER);
+  //lv_canvas_fill_bg(ui_CanvasFFT, lv_color_hex3(0xccc), LV_OPA_COVER);
+  //lv_obj_move_foreground(ui_CanvasFFT);
+  //lv_obj_remove_style_all(ui_CntnrVisualisation);
+  lv_obj_set_width(ui_CanvasFFT, CANVAS_FFT_WIDTH);
+  lv_obj_set_height(ui_CanvasFFT, CANVAS_FFT_HEIGHT);
+  lv_obj_set_x(ui_CanvasFFT, 0);
+  lv_obj_set_y(ui_CanvasFFT, 80);
+  lv_obj_set_align(ui_CanvasFFT, LV_ALIGN_CENTER);
+
+  //lv_obj_center(ui_CanvasFFT);
 
   lv_layer_t layer;
   lv_canvas_init_layer(ui_CanvasFFT, &layer);
