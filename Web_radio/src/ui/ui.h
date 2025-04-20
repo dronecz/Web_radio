@@ -35,7 +35,6 @@ extern lv_obj_t * ui_LblDots;
 extern lv_obj_t * ui_LblDate;
 extern lv_obj_t * ui_CntnrWeather;
 extern lv_obj_t * ui_CntnrRadio;
-extern lv_obj_t * ui_CntnrVisualisation;
 extern lv_obj_t * ui_LblStation;
 extern lv_obj_t * ui_LblCurPlaying;
 extern lv_obj_t * ui_CntnrButtons;

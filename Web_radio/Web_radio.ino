@@ -36,9 +36,9 @@ const int daylightOffset_sec = 3600;
 #define DIRECT_MODE  // Uncomment to enable full frame buffer
 
 // Connections ESP32S3 <-> Amplifier
-#define I2S_DOUT 15
-#define I2S_BCLK 16
-#define I2S_LRC 17
+#define I2S_DOUT 9
+#define I2S_BCLK 3
+#define I2S_LRC 1
 Audio audio;
 
 /* More dev device declaration: https://github.com/moononournation/Arduino_GFX/wiki/Dev-Device-Declaration */
@@ -237,7 +237,7 @@ void audio_eof_mp3(const char *info) {  //end of file
 void audio_showstation(const char *info) {
   Serial.print("station     ");
   Serial.println(info);
-  lv_label_set_text(ui_LblStation, info);
+  //lv_label_set_text(ui_LblStation, info);
 }
 void audio_showstreaminfo(const char *info) {
   Serial.print("streaminfo  ");
@@ -246,7 +246,7 @@ void audio_showstreaminfo(const char *info) {
 void audio_showstreamtitle(const char *info) {
   Serial.print("streamtitle ");
   Serial.println(info);
-  lv_label_set_text(ui_LblCurPlaying, info);
+  //lv_label_set_text(ui_LblCurPlaying, info);
 }
 void audio_bitrate(const char *info) {
   Serial.print("bitrate     ");
@@ -276,7 +276,6 @@ void audio_process_i2s(uint32_t *sample, bool *continueI2S) {
     draw_fft_level_meter(canvasFFT_gfx);
     lv_obj_invalidate(ui_CanvasFFT);
     raw_data_idx = 0;
-    Serial.println("FFT processing..");
   }
   *continueI2S = true;
 }
@@ -422,16 +421,23 @@ void setup() {
 
   // create lvgl canvas to draw FFT
   canvasFFT_gfx->begin();
+
   /*Create a buffer for the canvas*/
+
   LV_DRAW_BUF_DEFINE_STATIC(draw_buff, CANVAS_FFT_WIDTH, CANVAS_FFT_HEIGHT, LV_COLOR_FORMAT_RGB565);
   LV_DRAW_BUF_INIT_STATIC(draw_buff);
+
   // /*Create a canvas and initialize its palette*/
-  ui_CanvasFFT = lv_canvas_create(ui_CntnrRadio);
+
+  //ui_CanvasFFT = lv_canvas_create(ui_CntnrRadio);
+  ui_CanvasFFT = lv_canvas_create(lv_scr_act());
   lv_canvas_set_draw_buf(ui_CanvasFFT, &draw_buff);
+
   //lv_canvas_set_px(ui_CanvasFFT, 0, 440, lv_color_black(), LV_OPA_COVER);
-  //lv_canvas_fill_bg(ui_CanvasFFT, lv_color_hex3(0xccc), LV_OPA_COVER);
+  lv_canvas_fill_bg(ui_CanvasFFT, lv_color_hex3(0xccc), LV_OPA_0);
   //lv_obj_move_foreground(ui_CanvasFFT);
   //lv_obj_remove_style_all(ui_CntnrVisualisation);
+
   lv_obj_set_width(ui_CanvasFFT, CANVAS_FFT_WIDTH);
   lv_obj_set_height(ui_CanvasFFT, CANVAS_FFT_HEIGHT);
   lv_obj_set_x(ui_CanvasFFT, 0);
@@ -440,21 +446,22 @@ void setup() {
 
   //lv_obj_center(ui_CanvasFFT);
 
-  lv_layer_t layer;
-  lv_canvas_init_layer(ui_CanvasFFT, &layer);
-  lv_canvas_finish_layer(ui_CanvasFFT, &layer);
+  // lv_layer_t layer;
+  // lv_canvas_init_layer(ui_CanvasFFT, &layer);
+  // lv_canvas_finish_layer(ui_CanvasFFT, &layer);
 
-  char numberMin[2], numberHrs[2];
-  char numberDate[9];
-  sprintf(numberDate, "%02d.%02d.%04d", day, month, year);
-  lv_label_set_text(ui_LblDate, numberDate);
-  sprintf(numberMin, "%02d", minutes);
-  lv_label_set_text(ui_LblMin, numberMin);
-  sprintf(numberHrs, "%02d", hour);
-  lv_label_set_text(ui_LblHrs, numberHrs);
+  // char numberMin[2], numberHrs[2];
+  // char numberDate[9];
+  // sprintf(numberDate, "%02d.%02d.%04d", day, month, year);
+  // lv_label_set_text(ui_LblDate, numberDate);
+  // sprintf(numberMin, "%02d", minutes);
+  // lv_label_set_text(ui_LblMin, numberMin);
+  // sprintf(numberHrs, "%02d", hour);
+  // lv_label_set_text(ui_LblHrs, numberHrs);
 
   // Radio stream, e.g. Byte.fm
-  audio.connecttohost("http://www.byte.fm/stream/bytefm.m3u");
+  //audio.connecttohost("http://www.byte.fm/stream/bytefm.m3u");
+  audio.connecttohost("http://rozhlas.stream/radiozurnal_mp3_128.mp3");
 
   Serial.println("Setup done");
 }
@@ -462,7 +469,7 @@ void setup() {
 void loop() {
   audio.loop();
   // set the brightness on LEDC channel 0
-  ledcWriteChannel(LEDC_CHANNEL, brightness);
+  //ledcWriteChannel(LEDC_CHANNEL, brightness);
 
   lv_task_handler(); /* let the GUI do its work */
   readButtons();
@@ -483,3 +490,53 @@ void loop() {
 
   vTaskDelay(1);
 }
+
+
+//**************************************************************************************************
+// DISPLAY SPECTRUM *
+//**************************************************************************************************
+// *
+//**************************************************************************************************
+/*
+
+https://github.com/blotfi/ESP32-Radio-with-Spectrum-analyzer/blob/master/src/Esp32_radio.cpp
+
+uint8_t bands = 14; // Number of bands Spectrum Analyzer
+uint8_t prevbands = 0; // Number previous band Spectrum Analyzer
+uint8_t spectrum[14][3]; // Array per Spectrum Analyzer
+const uint8_t Spectrum_y0 = 150;
+const uint8_t Spectrum_hy = 70;
+
+void displaySpectrum() {
+    if (bands<=0 || bands>14)  return;
+    uint8_t larg = dsp_getwidth() / bands-2;
+    uint16_t  posi = 5; // start location of the first bar
+    boolean visual = true;
+//    if (enc_menu_mode == MENU)
+//    {
+//        visual = false;
+//    }
+    if (bands != prevbands) {
+        prevbands = bands;
+    if (visual)
+        dsp_fillRect (0, Spectrum_y0, dsp_getwidth(), Spectrum_hy + 1, BLACK);
+    }
+    for (uint8_t i = 0; i < bands; i++) // Handle all sections
+    {
+        if (visual) {
+            if (spectrum[i][0] > spectrum[i][1]) {
+                dsp_fillRect (posi, Spectrum_y0 + Spectrum_hy - spectrum[i][0], larg, spectrum[i][0], GREEN);
+                dsp_fillRect (posi, Spectrum_y0, larg, Spectrum_hy - spectrum[i][0], BLACK);
+            } else
+                dsp_fillRect (posi, Spectrum_y0, larg, Spectrum_hy - spectrum[i][0], BLACK);
+        }
+        if (spectrum[i][2] > 0) spectrum[i][2]--;
+        if (spectrum[i][0] > spectrum[i][2]) spectrum[i][2] = spectrum[i][0];
+        if (visual)
+            dsp_fillRect (posi, Spectrum_y0 + Spectrum_hy - spectrum[i][2] - 3, larg, 2, RED);
+        spectrum[i][1] = spectrum[i][0];
+        posi += larg + 2;
+    }
+}
+
+*/

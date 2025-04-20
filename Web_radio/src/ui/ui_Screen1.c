@@ -68,13 +68,6 @@ void ui_Screen1_screen_init(void)
     lv_obj_set_align(ui_CntnrRadio, LV_ALIGN_BOTTOM_MID);
     lv_obj_remove_flag(ui_CntnrRadio, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
 
-    ui_CntnrVisualisation = lv_obj_create(ui_CntnrRadio);
-    lv_obj_remove_style_all(ui_CntnrVisualisation);
-    lv_obj_set_width(ui_CntnrVisualisation, lv_pct(100));
-    lv_obj_set_height(ui_CntnrVisualisation, lv_pct(70));
-    lv_obj_set_align(ui_CntnrVisualisation, LV_ALIGN_BOTTOM_MID);
-    lv_obj_remove_flag(ui_CntnrVisualisation, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-
     ui_LblStation = lv_label_create(ui_CntnrRadio);
     lv_obj_set_width(ui_LblStation, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_LblStation, LV_SIZE_CONTENT);    /// 1

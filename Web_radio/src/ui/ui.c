@@ -19,7 +19,6 @@ lv_obj_t * ui_LblDots;
 lv_obj_t * ui_LblDate;
 lv_obj_t * ui_CntnrWeather;
 lv_obj_t * ui_CntnrRadio;
-lv_obj_t * ui_CntnrVisualisation;
 lv_obj_t * ui_LblStation;
 lv_obj_t * ui_LblCurPlaying;
 lv_obj_t * ui_CntnrButtons;
