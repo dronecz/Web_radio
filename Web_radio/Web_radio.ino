@@ -16,6 +16,8 @@ Sketch settings for ESP32-S3 Dev module:
  https://www.robinscheibler.org/2017/12/12/esp32-fft.html
  https://www.elektormagazine.com/articles/fast-fourier-transform-fft-on-the-esp32
  Google -> ESP32-audioI2S fft
+
+ https://youtu.be/IslG_mzpc1g
  
  */
 #include <Arduino_GFX_Library.h>
@@ -237,7 +239,7 @@ void audio_eof_mp3(const char *info) {  //end of file
 void audio_showstation(const char *info) {
   Serial.print("station     ");
   Serial.println(info);
-  //lv_label_set_text(ui_LblStation, info);
+  lv_label_set_text(ui_LblStation, info);
 }
 void audio_showstreaminfo(const char *info) {
   Serial.print("streaminfo  ");
@@ -246,7 +248,7 @@ void audio_showstreaminfo(const char *info) {
 void audio_showstreamtitle(const char *info) {
   Serial.print("streamtitle ");
   Serial.println(info);
-  //lv_label_set_text(ui_LblCurPlaying, info);
+  lv_label_set_text(ui_LblCurPlaying, info);
 }
 void audio_bitrate(const char *info) {
   Serial.print("bitrate     ");
@@ -269,16 +271,40 @@ void audio_eof_speech(const char *info) {
   Serial.println(info);
 }
 
-void audio_process_i2s(uint32_t *sample, bool *continueI2S) {
-  raw_data[raw_data_idx++] = *sample;
-  if (raw_data_idx >= WAVE_SIZE) {
-    fft.exec((int16_t *)raw_data);
-    draw_fft_level_meter(canvasFFT_gfx);
-    lv_obj_invalidate(ui_CanvasFFT);
-    raw_data_idx = 0;
-  }
-  *continueI2S = true;
-}
+//void audio_process_i2s(int16_t* outBuff, uint16_t validSamples, uint8_t bitsPerSample, uint8_t channels, bool *continueI2S) {
+  // raw_data[raw_data_idx++] = *validSamples;
+  // if (raw_data_idx >= WAVE_SIZE) {
+  //   Serial.println(String(raw_data_idx));
+  //   fft.exec((int16_t *)raw_data);
+  //   draw_fft_level_meter(canvasFFT_gfx);
+  //   lv_obj_invalidate(ui_CanvasFFT);
+  //   raw_data_idx = 0;
+//   }
+//   *continueI2S = true;
+// }
+
+// void audio_process_i2s(int16_t* outBuff, uint16_t validSamples, uint8_t bitsPerSample, uint8_t channels, bool *continueI2S){
+
+//     int16_t sineWaveTable[44] = {
+//          0,   3743,   7377,  10793,  14082,  17136,  19848,  22113,  23825,  24908,
+//       25311,  24908,  23825,  22113,  19848,  17136,  14082,  10793,   7377,   3743,
+//          0,  -3743,  -7377, -10793, -14082, -17136, -19848, -22113, -23825, -24908,
+//      -25311, -24908, -23825, -22113, -19848, -17136, -14082, -10793,  -7377,  -3743
+//     };
+
+//     static uint8_t tabPtr = 0;
+//     int16_t* sample[2]; // assume 2 channels, 16bit
+//     for(int i= 0; i < validSamples; i++){
+//         *(sample + 0) = outBuff + i * 2;     // channel left
+//         *(sample + 1) = outBuff + i * 2 + 1; // channel right
+
+//         *(*sample + 0) = (sineWaveTable[tabPtr] /50 + *(*sample + 0));
+//         *(*sample + 1) = (sineWaveTable[tabPtr] /50 + *(*sample + 1));
+//         tabPtr++;
+//         if(tabPtr == 44) tabPtr = 0;
+//     }
+//    *continueI2S = true;
+// }
 
 void setup() {
   Serial.begin(115200);
@@ -420,44 +446,45 @@ void setup() {
   ui_init();
 
   // create lvgl canvas to draw FFT
-  canvasFFT_gfx->begin();
+  // canvasFFT_gfx->begin();
 
-  /*Create a buffer for the canvas*/
+  // /*Create a buffer for the canvas*/
 
-  LV_DRAW_BUF_DEFINE_STATIC(draw_buff, CANVAS_FFT_WIDTH, CANVAS_FFT_HEIGHT, LV_COLOR_FORMAT_RGB565);
-  LV_DRAW_BUF_INIT_STATIC(draw_buff);
+  // LV_DRAW_BUF_DEFINE_STATIC(draw_buff, CANVAS_FFT_WIDTH, CANVAS_FFT_HEIGHT, LV_COLOR_FORMAT_RGB565);
+  // LV_DRAW_BUF_INIT_STATIC(draw_buff);
 
-  // /*Create a canvas and initialize its palette*/
+  // // /*Create a canvas and initialize its palette*/
 
-  //ui_CanvasFFT = lv_canvas_create(ui_CntnrRadio);
-  ui_CanvasFFT = lv_canvas_create(lv_scr_act());
-  lv_canvas_set_draw_buf(ui_CanvasFFT, &draw_buff);
+  // //ui_CanvasFFT = lv_canvas_create(ui_CntnrRadio);
+  // ui_CanvasFFT = lv_canvas_create(lv_scr_act());
+  // lv_canvas_set_buffer(ui_CanvasFFT, (lv_color_t *)canvasFFT_gfx->getFramebuffer(), CANVAS_FFT_WIDTH, CANVAS_FFT_HEIGHT, LV_COLOR_FORMAT_RGB565);
+  // //lv_canvas_set_draw_buf(ui_CanvasFFT, &draw_buff);
 
-  //lv_canvas_set_px(ui_CanvasFFT, 0, 440, lv_color_black(), LV_OPA_COVER);
-  lv_canvas_fill_bg(ui_CanvasFFT, lv_color_hex3(0xccc), LV_OPA_0);
-  //lv_obj_move_foreground(ui_CanvasFFT);
-  //lv_obj_remove_style_all(ui_CntnrVisualisation);
+  // //lv_canvas_set_px(ui_CanvasFFT, 0, 440, lv_color_black(), LV_OPA_COVER);
+  // lv_canvas_fill_bg(ui_CanvasFFT, lv_color_hex3(0xccc), LV_OPA_TRANSP);
+  // //lv_obj_move_foreground(ui_CanvasFFT);
+  // //lv_obj_remove_style_all(ui_CntnrVisualisation);
 
-  lv_obj_set_width(ui_CanvasFFT, CANVAS_FFT_WIDTH);
-  lv_obj_set_height(ui_CanvasFFT, CANVAS_FFT_HEIGHT);
-  lv_obj_set_x(ui_CanvasFFT, 0);
-  lv_obj_set_y(ui_CanvasFFT, 80);
-  lv_obj_set_align(ui_CanvasFFT, LV_ALIGN_CENTER);
+  // lv_obj_set_width(ui_CanvasFFT, CANVAS_FFT_WIDTH);
+  // lv_obj_set_height(ui_CanvasFFT, CANVAS_FFT_HEIGHT);
+  // lv_obj_set_x(ui_CanvasFFT, 0);
+  // lv_obj_set_y(ui_CanvasFFT, 80);
+  // lv_obj_set_align(ui_CanvasFFT, LV_ALIGN_CENTER);
 
-  //lv_obj_center(ui_CanvasFFT);
+  // //lv_obj_center(ui_CanvasFFT);
 
   // lv_layer_t layer;
   // lv_canvas_init_layer(ui_CanvasFFT, &layer);
   // lv_canvas_finish_layer(ui_CanvasFFT, &layer);
 
-  // char numberMin[2], numberHrs[2];
-  // char numberDate[9];
-  // sprintf(numberDate, "%02d.%02d.%04d", day, month, year);
-  // lv_label_set_text(ui_LblDate, numberDate);
-  // sprintf(numberMin, "%02d", minutes);
-  // lv_label_set_text(ui_LblMin, numberMin);
-  // sprintf(numberHrs, "%02d", hour);
-  // lv_label_set_text(ui_LblHrs, numberHrs);
+  char numberMin[2], numberHrs[2];
+  char numberDate[9];
+  sprintf(numberDate, "%02d.%02d.%04d", day, month, year);
+  lv_label_set_text(ui_LblDate, numberDate);
+  sprintf(numberMin, "%02d", minutes);
+  lv_label_set_text(ui_LblMin, numberMin);
+  sprintf(numberHrs, "%02d", hour);
+  lv_label_set_text(ui_LblHrs, numberHrs);
 
   // Radio stream, e.g. Byte.fm
   //audio.connecttohost("http://www.byte.fm/stream/bytefm.m3u");
