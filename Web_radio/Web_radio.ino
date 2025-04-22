@@ -21,15 +21,13 @@ Sketch settings for ESP32-S3 Dev module:
  
  */
 #include <Arduino_GFX_Library.h>
+#include "arduino_secrets.h"
 #include "Audio.h"
 #include <lvgl.h>
 #include "src/ui/ui.h"
 #include <WiFi.h>
 #include "time.h"
 #include "sntp.h"
-
-const char *ssid = "SSID";
-const char *password = "PASSWORD";
 
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;
@@ -370,7 +368,7 @@ void setup() {
   //connect to WiFi
   Serial.printf("Connecting to %s ", ssid);
 
-  WiFi.begin(ssid, password);
+  WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
