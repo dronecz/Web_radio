@@ -18,25 +18,20 @@ lv_obj_t * ui_LblMin;
 lv_obj_t * ui_LblDots;
 lv_obj_t * ui_LblDate;
 lv_obj_t * ui_CntnrWeather;
+lv_obj_t * ui_CntnrButtons;
+lv_obj_t * ui_Button1;
+lv_obj_t * ui_Container1;
+lv_obj_t * ui_Button2;
+lv_obj_t * ui_Container2;
+lv_obj_t * ui_Button3;
+lv_obj_t * ui_Container3;
+lv_obj_t * ui_Button4;
+lv_obj_t * ui_Container4;
+lv_obj_t * ui_Button5;
+lv_obj_t * ui_Container5;
 lv_obj_t * ui_CntnrRadio;
 lv_obj_t * ui_LblStation;
 lv_obj_t * ui_LblCurPlaying;
-lv_obj_t * ui_CntnrButtons;
-void ui_event_Button1(lv_event_t * e);
-lv_obj_t * ui_Button1;
-lv_obj_t * ui_Container1;
-void ui_event_Button2(lv_event_t * e);
-lv_obj_t * ui_Button2;
-lv_obj_t * ui_Container2;
-void ui_event_Button3(lv_event_t * e);
-lv_obj_t * ui_Button3;
-lv_obj_t * ui_Container3;
-void ui_event_Button4(lv_event_t * e);
-lv_obj_t * ui_Button4;
-lv_obj_t * ui_Container4;
-void ui_event_Button5(lv_event_t * e);
-lv_obj_t * ui_Button5;
-lv_obj_t * ui_Container5;
 lv_obj_t * ui_PnlHorLine;
 lv_obj_t * ui_PnlVerLine;
 // CUSTOM VARIABLES
@@ -54,70 +49,6 @@ lv_obj_t * ui____initial_actions0;
 ///////////////////// ANIMATIONS ////////////////////
 
 ///////////////////// FUNCTIONS ////////////////////
-void ui_event_Button1(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-
-    if(event_code == LV_EVENT_VALUE_CHANGED &&  lv_obj_has_state(target, LV_STATE_CHECKED)) {
-        _ui_state_modify(ui_Container1, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
-    }
-    if(event_code == LV_EVENT_VALUE_CHANGED &&  !lv_obj_has_state(target, LV_STATE_CHECKED)) {
-        _ui_state_modify(ui_Container1, LV_STATE_CHECKED, _UI_MODIFY_STATE_REMOVE);
-    }
-}
-
-void ui_event_Button2(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-
-    if(event_code == LV_EVENT_VALUE_CHANGED &&  lv_obj_has_state(target, LV_STATE_CHECKED)) {
-        _ui_state_modify(ui_Container2, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
-    }
-    if(event_code == LV_EVENT_VALUE_CHANGED &&  !lv_obj_has_state(target, LV_STATE_CHECKED)) {
-        _ui_state_modify(ui_Container2, LV_STATE_CHECKED, _UI_MODIFY_STATE_REMOVE);
-    }
-}
-
-void ui_event_Button3(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-
-    if(event_code == LV_EVENT_VALUE_CHANGED &&  lv_obj_has_state(target, LV_STATE_CHECKED)) {
-        _ui_state_modify(ui_Container3, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
-    }
-    if(event_code == LV_EVENT_VALUE_CHANGED &&  !lv_obj_has_state(target, LV_STATE_CHECKED)) {
-        _ui_state_modify(ui_Container3, LV_STATE_CHECKED, _UI_MODIFY_STATE_REMOVE);
-    }
-}
-
-void ui_event_Button4(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-
-    if(event_code == LV_EVENT_VALUE_CHANGED &&  lv_obj_has_state(target, LV_STATE_CHECKED)) {
-        _ui_state_modify(ui_Container4, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
-    }
-    if(event_code == LV_EVENT_VALUE_CHANGED &&  !lv_obj_has_state(target, LV_STATE_CHECKED)) {
-        _ui_state_modify(ui_Container4, LV_STATE_CHECKED, _UI_MODIFY_STATE_REMOVE);
-    }
-}
-
-void ui_event_Button5(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-
-    if(event_code == LV_EVENT_VALUE_CHANGED &&  lv_obj_has_state(target, LV_STATE_CHECKED)) {
-        _ui_state_modify(ui_Container5, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
-    }
-    if(event_code == LV_EVENT_VALUE_CHANGED &&  !lv_obj_has_state(target, LV_STATE_CHECKED)) {
-        _ui_state_modify(ui_Container5, LV_STATE_CHECKED, _UI_MODIFY_STATE_REMOVE);
-    }
-}
 
 ///////////////////// SCREENS ////////////////////
 

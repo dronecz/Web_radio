@@ -2,8 +2,7 @@
  * Extract from:
  * https://github.com/m5stack/M5Unified/blob/master/examples/Advanced/MP3_with_ESP8266Audio/MP3_with_ESP8266Audio.ino
  */
-// #define FFT_SIZE 256
-#define FFT_SIZE 128
+#define FFT_SIZE 512
 class fft_t
 {
   float _wr[FFT_SIZE + 1];
@@ -97,28 +96,12 @@ static constexpr size_t WAVE_SIZE = (44100 / 30);
 static fft_t fft;
 static uint16_t prev_h[(FFT_SIZE / 2) + 1];
 static uint16_t peak_y[(FFT_SIZE / 2) + 1];
-static uint32_t raw_data[WAVE_SIZE];
+//static uint32_t raw_data[WAVE_SIZE];
+
+// Zásobník surových audio dat (pouze int16_t mono)
+static int16_t raw_data[FFT_SIZE];
 static size_t raw_data_idx = 0;
 
-#if (LV_COLOR_16_SWAP != 0)
-static uint16_t level_color[] = {
-    MSB_16(RGB565(0xcd, 0x19, 0x22)),
-    MSB_16(RGB565(0xcd, 0x22, 0x10)),
-    MSB_16(RGB565(0xcd, 0x2a, 0x10)),
-    MSB_16(RGB565(0xd6, 0x5a, 0x00)),
-    MSB_16(RGB565(0xd6, 0x66, 0x01)),
-    MSB_16(RGB565(0xd6, 0x73, 0x01)),
-    MSB_16(RGB565(0xc6, 0x7b, 0x09)),
-    MSB_16(RGB565(0xde, 0xa5, 0x19)),
-    MSB_16(RGB565(0xd6, 0xb5, 0x22)),
-    MSB_16(RGB565(0xbc, 0xde, 0x2a)),
-    MSB_16(RGB565(0x93, 0xde, 0x22)),
-    MSB_16(RGB565(0x29, 0xce, 0x10)),
-    MSB_16(RGB565(0x32, 0xbe, 0x10)),
-    MSB_16(RGB565(0x37, 0xb6, 0x0e)),
-    MSB_16(RGB565(0x31, 0x9c, 0x0a)),
-    MSB_16(RGB565(0x28, 0x94, 0x01))};
-#else
 static uint16_t level_color[] = {
     RGB565(0xcd, 0x19, 0x22),
     RGB565(0xcd, 0x22, 0x10),
@@ -136,7 +119,6 @@ static uint16_t level_color[] = {
     RGB565(0x37, 0xb6, 0x0e),
     RGB565(0x31, 0x9c, 0x0a),
     RGB565(0x28, 0x94, 0x01)};
-#endif
 
 static void init_peak_array()
 {
@@ -149,15 +131,14 @@ static void init_peak_array()
 
 static void draw_fft_level_meter(Arduino_GFX *meter_gfx)
 {
-  // size_t bw = meter_gfx->width() / 60;
-  size_t bw = meter_gfx->width() / 19;
+  size_t bw = 4;
   if (bw < 3)
   {
     bw = 3;
   }
   int32_t fft_height = 17;
   int32_t fft_heightc = fft_height >> 2;
-  size_t xe = meter_gfx->width() / bw;
+  size_t xe = 19;
   if (xe > (FFT_SIZE / 2))
   {
     xe = (FFT_SIZE / 2);
@@ -167,8 +148,7 @@ static void draw_fft_level_meter(Arduino_GFX *meter_gfx)
   {
     size_t x = bx * bw;
     int32_t f = fft.get(bx);
-    // int32_t h = (f * fft_height) >> 18;
-    int32_t h = (f * fft_height) >> 13;
+    int32_t h = (f * fft_height) >> 16;
     if (h >= fft_height)
     {
       h = fft_height - 1;

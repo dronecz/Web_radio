@@ -779,402 +779,6 @@
             "tree_closed": true
           },
           {
-            "guid": "GUID10576750-383225S3694102",
-            "deepid": -1171054655,
-            "children": [
-              {
-                "guid": "GUID1809996-383233S5154102",
-                "deepid": 1673683801,
-                "dont_export": false,
-                "locked": false,
-                "properties": [
-                  {
-                    "nid": 10,
-                    "strtype": "OBJECT/Name",
-                    "strval": "LblStation",
-                    "InheritedType": 10
-                  },
-                  {
-                    "nid": 20,
-                    "strtype": "OBJECT/Layout",
-                    "InheritedType": 1
-                  },
-                  {
-                    "Flow": 0,
-                    "Wrap": false,
-                    "Reversed": false,
-                    "MainAlignment": 0,
-                    "CrossAlignment": 0,
-                    "TrackAlignment": 0,
-                    "LayoutType": 0,
-                    "nid": 30,
-                    "strtype": "OBJECT/Layout_type",
-                    "strval": "No_layout",
-                    "InheritedType": 13
-                  },
-                  {
-                    "nid": 40,
-                    "strtype": "OBJECT/Transform",
-                    "InheritedType": 1
-                  },
-                  {
-                    "nid": 50,
-                    "flags": 17,
-                    "strtype": "OBJECT/Position",
-                    "intarray": [
-                      0,
-                      15
-                    ],
-                    "InheritedType": 7
-                  },
-                  {
-                    "nid": 60,
-                    "flags": 51,
-                    "strtype": "OBJECT/Size",
-                    "intarray": [
-                      1,
-                      1
-                    ],
-                    "InheritedType": 7
-                  },
-                  {
-                    "nid": 70,
-                    "strtype": "OBJECT/Align",
-                    "strval": "TOP_MID",
-                    "InheritedType": 3
-                  },
-                  {
-                    "nid": 90,
-                    "flags": 1048576,
-                    "strtype": "OBJECT/Flags",
-                    "InheritedType": 1
-                  },
-                  {
-                    "nid": 110,
-                    "strtype": "OBJECT/Clickable",
-                    "strval": "False",
-                    "InheritedType": 2
-                  },
-                  {
-                    "nid": 300,
-                    "strtype": "OBJECT/Scrollbar_mode",
-                    "strval": "AUTO",
-                    "InheritedType": 3
-                  },
-                  {
-                    "nid": 310,
-                    "strtype": "OBJECT/Scroll_direction",
-                    "strval": "ALL",
-                    "InheritedType": 3
-                  },
-                  {
-                    "nid": 320,
-                    "flags": 1048576,
-                    "strtype": "OBJECT/States",
-                    "InheritedType": 1
-                  },
-                  {
-                    "nid": 1010,
-                    "strtype": "LABEL/Label",
-                    "InheritedType": 1
-                  },
-                  {
-                    "nid": 1020,
-                    "strtype": "LABEL/Long_mode",
-                    "strval": "WRAP",
-                    "InheritedType": 3
-                  },
-                  {
-                    "nid": 1030,
-                    "strtype": "LABEL/Text",
-                    "strval": "Radio Station",
-                    "InheritedType": 10
-                  },
-                  {
-                    "part": "lv.PART.MAIN",
-                    "childs": [
-                      {
-                        "nid": 10000,
-                        "strtype": "_style/StyleState",
-                        "strval": "DEFAULT",
-                        "childs": [
-                          {
-                            "nid": 10410,
-                            "strtype": "_style/Text_Color",
-                            "intarray": [
-                              190,
-                              190,
-                              190,
-                              255
-                            ],
-                            "InheritedType": 7
-                          },
-                          {
-                            "nid": 10450,
-                            "strtype": "_style/Text_Font",
-                            "strval": "montserrat_28",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 1
-                      }
-                    ],
-                    "nid": 1040,
-                    "strtype": "LABEL/Style_main",
-                    "strval": "lv.PART.MAIN, Text, Rectangle, Pad, Transform",
-                    "InheritedType": 11
-                  }
-                ],
-                "saved_objtypeKey": "LABEL"
-              },
-              {
-                "guid": "GUID59445772-383247S5354102",
-                "deepid": 2141901084,
-                "dont_export": false,
-                "locked": false,
-                "properties": [
-                  {
-                    "nid": 10,
-                    "strtype": "OBJECT/Name",
-                    "strval": "LblCurPlaying",
-                    "InheritedType": 10
-                  },
-                  {
-                    "nid": 20,
-                    "strtype": "OBJECT/Layout",
-                    "InheritedType": 1
-                  },
-                  {
-                    "Flow": 0,
-                    "Wrap": false,
-                    "Reversed": false,
-                    "MainAlignment": 0,
-                    "CrossAlignment": 0,
-                    "TrackAlignment": 0,
-                    "LayoutType": 0,
-                    "nid": 30,
-                    "strtype": "OBJECT/Layout_type",
-                    "strval": "No_layout",
-                    "InheritedType": 13
-                  },
-                  {
-                    "nid": 40,
-                    "strtype": "OBJECT/Transform",
-                    "InheritedType": 1
-                  },
-                  {
-                    "nid": 50,
-                    "flags": 17,
-                    "strtype": "OBJECT/Position",
-                    "intarray": [
-                      0,
-                      10
-                    ],
-                    "InheritedType": 7
-                  },
-                  {
-                    "nid": 60,
-                    "flags": 51,
-                    "strtype": "OBJECT/Size",
-                    "intarray": [
-                      1,
-                      1
-                    ],
-                    "InheritedType": 7
-                  },
-                  {
-                    "nid": 70,
-                    "strtype": "OBJECT/Align",
-                    "strval": "CENTER",
-                    "InheritedType": 3
-                  },
-                  {
-                    "nid": 90,
-                    "strtype": "OBJECT/Flags",
-                    "InheritedType": 1
-                  },
-                  {
-                    "nid": 110,
-                    "strtype": "OBJECT/Clickable",
-                    "strval": "False",
-                    "InheritedType": 2
-                  },
-                  {
-                    "nid": 300,
-                    "strtype": "OBJECT/Scrollbar_mode",
-                    "strval": "AUTO",
-                    "InheritedType": 3
-                  },
-                  {
-                    "nid": 310,
-                    "strtype": "OBJECT/Scroll_direction",
-                    "strval": "ALL",
-                    "InheritedType": 3
-                  },
-                  {
-                    "nid": 320,
-                    "flags": 1048576,
-                    "strtype": "OBJECT/States",
-                    "InheritedType": 1
-                  },
-                  {
-                    "nid": 1010,
-                    "strtype": "LABEL/Label",
-                    "InheritedType": 1
-                  },
-                  {
-                    "nid": 1020,
-                    "strtype": "LABEL/Long_mode",
-                    "strval": "SCROLL_CIRCULAR",
-                    "InheritedType": 3
-                  },
-                  {
-                    "nid": 1030,
-                    "strtype": "LABEL/Text",
-                    "strval": "Currently Playing",
-                    "InheritedType": 10
-                  },
-                  {
-                    "part": "lv.PART.MAIN",
-                    "childs": [
-                      {
-                        "nid": 10000,
-                        "strtype": "_style/StyleState",
-                        "strval": "DEFAULT",
-                        "childs": [
-                          {
-                            "nid": 10450,
-                            "strtype": "_style/Text_Font",
-                            "strval": "montserrat_18",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 1
-                      }
-                    ],
-                    "nid": 1040,
-                    "strtype": "LABEL/Style_main",
-                    "strval": "lv.PART.MAIN, Text, Rectangle, Pad, Transform",
-                    "InheritedType": 11
-                  }
-                ],
-                "saved_objtypeKey": "LABEL"
-              }
-            ],
-            "dont_export": false,
-            "locked": false,
-            "properties": [
-              {
-                "nid": 10,
-                "strtype": "OBJECT/Name",
-                "strval": "CntnrRadio",
-                "InheritedType": 10
-              },
-              {
-                "nid": 20,
-                "strtype": "OBJECT/Layout",
-                "InheritedType": 1
-              },
-              {
-                "Flow": 0,
-                "Wrap": false,
-                "Reversed": false,
-                "MainAlignment": 0,
-                "CrossAlignment": 0,
-                "TrackAlignment": 0,
-                "LayoutType": 0,
-                "nid": 30,
-                "strtype": "OBJECT/Layout_type",
-                "strval": "No_layout",
-                "InheritedType": 13
-              },
-              {
-                "nid": 40,
-                "strtype": "OBJECT/Transform",
-                "InheritedType": 1
-              },
-              {
-                "nid": 50,
-                "flags": 17,
-                "strtype": "OBJECT/Position",
-                "intarray": [
-                  0,
-                  -50
-                ],
-                "InheritedType": 7
-              },
-              {
-                "nid": 60,
-                "flags": 18,
-                "strtype": "OBJECT/Size",
-                "intarray": [
-                  100,
-                  110
-                ],
-                "InheritedType": 7
-              },
-              {
-                "nid": 70,
-                "strtype": "OBJECT/Align",
-                "strval": "BOTTOM_MID",
-                "InheritedType": 3
-              },
-              {
-                "nid": 90,
-                "flags": 1048576,
-                "strtype": "OBJECT/Flags",
-                "InheritedType": 1
-              },
-              {
-                "nid": 110,
-                "strtype": "OBJECT/Clickable",
-                "strval": "False",
-                "InheritedType": 2
-              },
-              {
-                "nid": 230,
-                "strtype": "OBJECT/Scrollable",
-                "strval": "False",
-                "InheritedType": 2
-              },
-              {
-                "nid": 300,
-                "strtype": "OBJECT/Scrollbar_mode",
-                "strval": "AUTO",
-                "InheritedType": 3
-              },
-              {
-                "nid": 310,
-                "strtype": "OBJECT/Scroll_direction",
-                "strval": "ALL",
-                "InheritedType": 3
-              },
-              {
-                "nid": 320,
-                "flags": 1048576,
-                "strtype": "OBJECT/States",
-                "InheritedType": 1
-              },
-              {
-                "part": "lv.PART.MAIN",
-                "childs": [],
-                "nid": 1010,
-                "strtype": "CONTAINER/Style_main",
-                "strval": "lv.PART.MAIN, Rectangle, Pad, Text, Transform",
-                "InheritedType": 11
-              },
-              {
-                "part": "lv.PART.SCROLLBAR",
-                "childs": [],
-                "nid": 1020,
-                "strtype": "CONTAINER/Style_scrollbar",
-                "strval": "lv.PART.SCROLLBAR, Rectangle, Pad",
-                "InheritedType": 11
-              }
-            ],
-            "saved_objtypeKey": "CONTAINER"
-          },
-          {
             "guid": "GUID81510692-383227S372054102",
             "deepid": -2010505554,
             "children": [
@@ -1506,148 +1110,6 @@
                     "strtype": "BUTTON/Style_main",
                     "strval": "lv.PART.MAIN, Rectangle, Pad, Text, Transform",
                     "InheritedType": 11
-                  },
-                  {
-                    "disabled": false,
-                    "nid": 1000448,
-                    "strtype": "_event/EventHandler",
-                    "strval": "CHECKED(VALUE_CHANGED)",
-                    "childs": [
-                      {
-                        "nid": 1000449,
-                        "strtype": "_event/name",
-                        "strval": "Event5",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000450,
-                        "strtype": "_event/condition_C",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000451,
-                        "strtype": "_event/condition_P",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000452,
-                        "strtype": "_event/action",
-                        "strval": "MODIFY STATE",
-                        "childs": [
-                          {
-                            "nid": 1000453,
-                            "strtype": "MODIFY STATE/Name",
-                            "strval": "MODIFY STATE",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000454,
-                            "strtype": "MODIFY STATE/Call",
-                            "strval": "ModifyState( <{Object}>, lv.STATE.<{State}>, \"<{Action}>\")",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000455,
-                            "strtype": "MODIFY STATE/CallC",
-                            "strval": "_ui_state_modify( <{Object}>, LV_STATE_<{State}>, _UI_MODIFY_STATE_<{Action}>);",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000456,
-                            "strtype": "MODIFY STATE/Object",
-                            "strval": "GUID89281369-383231S9954102",
-                            "InheritedType": 9
-                          },
-                          {
-                            "nid": 1000457,
-                            "strtype": "MODIFY STATE/State",
-                            "strval": "CHECKED",
-                            "InheritedType": 3
-                          },
-                          {
-                            "nid": 1000458,
-                            "strtype": "MODIFY STATE/Action",
-                            "strval": "ADD",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 10
-                      }
-                    ],
-                    "InheritedType": 4
-                  },
-                  {
-                    "disabled": false,
-                    "nid": 1000459,
-                    "strtype": "_event/EventHandler",
-                    "strval": "UNCHECKED(VALUE_CHANGED)",
-                    "childs": [
-                      {
-                        "nid": 1000460,
-                        "strtype": "_event/name",
-                        "strval": "Event6",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000461,
-                        "strtype": "_event/condition_C",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000462,
-                        "strtype": "_event/condition_P",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000463,
-                        "strtype": "_event/action",
-                        "strval": "MODIFY STATE",
-                        "childs": [
-                          {
-                            "nid": 1000464,
-                            "strtype": "MODIFY STATE/Name",
-                            "strval": "MODIFY STATE",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000465,
-                            "strtype": "MODIFY STATE/Call",
-                            "strval": "ModifyState( <{Object}>, lv.STATE.<{State}>, \"<{Action}>\")",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000466,
-                            "strtype": "MODIFY STATE/CallC",
-                            "strval": "_ui_state_modify( <{Object}>, LV_STATE_<{State}>, _UI_MODIFY_STATE_<{Action}>);",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000467,
-                            "strtype": "MODIFY STATE/Object",
-                            "strval": "GUID89281369-383231S9954102",
-                            "InheritedType": 9
-                          },
-                          {
-                            "nid": 1000468,
-                            "strtype": "MODIFY STATE/State",
-                            "strval": "CHECKED",
-                            "InheritedType": 3
-                          },
-                          {
-                            "nid": 1000469,
-                            "strtype": "MODIFY STATE/Action",
-                            "strval": "REMOVE",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 10
-                      }
-                    ],
-                    "InheritedType": 4
                   }
                 ],
                 "saved_objtypeKey": "BUTTON"
@@ -1980,148 +1442,6 @@
                     "strtype": "BUTTON/Style_main",
                     "strval": "lv.PART.MAIN, Rectangle, Pad, Text, Transform",
                     "InheritedType": 11
-                  },
-                  {
-                    "disabled": false,
-                    "nid": 1000448,
-                    "strtype": "_event/EventHandler",
-                    "strval": "CHECKED(VALUE_CHANGED)",
-                    "childs": [
-                      {
-                        "nid": 1000449,
-                        "strtype": "_event/name",
-                        "strval": "Event3",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000450,
-                        "strtype": "_event/condition_C",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000451,
-                        "strtype": "_event/condition_P",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000452,
-                        "strtype": "_event/action",
-                        "strval": "MODIFY STATE",
-                        "childs": [
-                          {
-                            "nid": 1000453,
-                            "strtype": "MODIFY STATE/Name",
-                            "strval": "MODIFY STATE",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000454,
-                            "strtype": "MODIFY STATE/Call",
-                            "strval": "ModifyState( <{Object}>, lv.STATE.<{State}>, \"<{Action}>\")",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000455,
-                            "strtype": "MODIFY STATE/CallC",
-                            "strval": "_ui_state_modify( <{Object}>, LV_STATE_<{State}>, _UI_MODIFY_STATE_<{Action}>);",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000456,
-                            "strtype": "MODIFY STATE/Object",
-                            "strval": "GUID36699482-383239S9814102",
-                            "InheritedType": 9
-                          },
-                          {
-                            "nid": 1000457,
-                            "strtype": "MODIFY STATE/State",
-                            "strval": "CHECKED",
-                            "InheritedType": 3
-                          },
-                          {
-                            "nid": 1000458,
-                            "strtype": "MODIFY STATE/Action",
-                            "strval": "ADD",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 10
-                      }
-                    ],
-                    "InheritedType": 4
-                  },
-                  {
-                    "disabled": false,
-                    "nid": 1000459,
-                    "strtype": "_event/EventHandler",
-                    "strval": "UNCHECKED(VALUE_CHANGED)",
-                    "childs": [
-                      {
-                        "nid": 1000460,
-                        "strtype": "_event/name",
-                        "strval": "Event4",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000461,
-                        "strtype": "_event/condition_C",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000462,
-                        "strtype": "_event/condition_P",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000463,
-                        "strtype": "_event/action",
-                        "strval": "MODIFY STATE",
-                        "childs": [
-                          {
-                            "nid": 1000464,
-                            "strtype": "MODIFY STATE/Name",
-                            "strval": "MODIFY STATE",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000465,
-                            "strtype": "MODIFY STATE/Call",
-                            "strval": "ModifyState( <{Object}>, lv.STATE.<{State}>, \"<{Action}>\")",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000466,
-                            "strtype": "MODIFY STATE/CallC",
-                            "strval": "_ui_state_modify( <{Object}>, LV_STATE_<{State}>, _UI_MODIFY_STATE_<{Action}>);",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000467,
-                            "strtype": "MODIFY STATE/Object",
-                            "strval": "GUID36699482-383239S9814102",
-                            "InheritedType": 9
-                          },
-                          {
-                            "nid": 1000468,
-                            "strtype": "MODIFY STATE/State",
-                            "strval": "CHECKED",
-                            "InheritedType": 3
-                          },
-                          {
-                            "nid": 1000469,
-                            "strtype": "MODIFY STATE/Action",
-                            "strval": "REMOVE",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 10
-                      }
-                    ],
-                    "InheritedType": 4
                   }
                 ],
                 "saved_objtypeKey": "BUTTON"
@@ -2454,148 +1774,6 @@
                     "strtype": "BUTTON/Style_main",
                     "strval": "lv.PART.MAIN, Rectangle, Pad, Text, Transform",
                     "InheritedType": 11
-                  },
-                  {
-                    "disabled": false,
-                    "nid": 1000448,
-                    "strtype": "_event/EventHandler",
-                    "strval": "CHECKED(VALUE_CHANGED)",
-                    "childs": [
-                      {
-                        "nid": 1000449,
-                        "strtype": "_event/name",
-                        "strval": "Event1",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000450,
-                        "strtype": "_event/condition_C",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000451,
-                        "strtype": "_event/condition_P",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000452,
-                        "strtype": "_event/action",
-                        "strval": "MODIFY STATE",
-                        "childs": [
-                          {
-                            "nid": 1000453,
-                            "strtype": "MODIFY STATE/Name",
-                            "strval": "MODIFY STATE",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000454,
-                            "strtype": "MODIFY STATE/Call",
-                            "strval": "ModifyState( <{Object}>, lv.STATE.<{State}>, \"<{Action}>\")",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000455,
-                            "strtype": "MODIFY STATE/CallC",
-                            "strval": "_ui_state_modify( <{Object}>, LV_STATE_<{State}>, _UI_MODIFY_STATE_<{Action}>);",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000456,
-                            "strtype": "MODIFY STATE/Object",
-                            "strval": "GUID19973755-383241S5754102",
-                            "InheritedType": 9
-                          },
-                          {
-                            "nid": 1000457,
-                            "strtype": "MODIFY STATE/State",
-                            "strval": "CHECKED",
-                            "InheritedType": 3
-                          },
-                          {
-                            "nid": 1000458,
-                            "strtype": "MODIFY STATE/Action",
-                            "strval": "ADD",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 10
-                      }
-                    ],
-                    "InheritedType": 4
-                  },
-                  {
-                    "disabled": false,
-                    "nid": 1000459,
-                    "strtype": "_event/EventHandler",
-                    "strval": "UNCHECKED(VALUE_CHANGED)",
-                    "childs": [
-                      {
-                        "nid": 1000460,
-                        "strtype": "_event/name",
-                        "strval": "Event2",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000461,
-                        "strtype": "_event/condition_C",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000462,
-                        "strtype": "_event/condition_P",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000463,
-                        "strtype": "_event/action",
-                        "strval": "MODIFY STATE",
-                        "childs": [
-                          {
-                            "nid": 1000464,
-                            "strtype": "MODIFY STATE/Name",
-                            "strval": "MODIFY STATE",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000465,
-                            "strtype": "MODIFY STATE/Call",
-                            "strval": "ModifyState( <{Object}>, lv.STATE.<{State}>, \"<{Action}>\")",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000466,
-                            "strtype": "MODIFY STATE/CallC",
-                            "strval": "_ui_state_modify( <{Object}>, LV_STATE_<{State}>, _UI_MODIFY_STATE_<{Action}>);",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000467,
-                            "strtype": "MODIFY STATE/Object",
-                            "strval": "GUID19973755-383241S5754102",
-                            "InheritedType": 9
-                          },
-                          {
-                            "nid": 1000468,
-                            "strtype": "MODIFY STATE/State",
-                            "strval": "CHECKED",
-                            "InheritedType": 3
-                          },
-                          {
-                            "nid": 1000469,
-                            "strtype": "MODIFY STATE/Action",
-                            "strval": "REMOVE",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 10
-                      }
-                    ],
-                    "InheritedType": 4
                   }
                 ],
                 "saved_objtypeKey": "BUTTON"
@@ -2928,148 +2106,6 @@
                     "strtype": "BUTTON/Style_main",
                     "strval": "lv.PART.MAIN, Rectangle, Pad, Text, Transform",
                     "InheritedType": 11
-                  },
-                  {
-                    "disabled": false,
-                    "nid": 1000448,
-                    "strtype": "_event/EventHandler",
-                    "strval": "CHECKED(VALUE_CHANGED)",
-                    "childs": [
-                      {
-                        "nid": 1000449,
-                        "strtype": "_event/name",
-                        "strval": "Event7",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000450,
-                        "strtype": "_event/condition_C",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000451,
-                        "strtype": "_event/condition_P",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000452,
-                        "strtype": "_event/action",
-                        "strval": "MODIFY STATE",
-                        "childs": [
-                          {
-                            "nid": 1000453,
-                            "strtype": "MODIFY STATE/Name",
-                            "strval": "MODIFY STATE",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000454,
-                            "strtype": "MODIFY STATE/Call",
-                            "strval": "ModifyState( <{Object}>, lv.STATE.<{State}>, \"<{Action}>\")",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000455,
-                            "strtype": "MODIFY STATE/CallC",
-                            "strval": "_ui_state_modify( <{Object}>, LV_STATE_<{State}>, _UI_MODIFY_STATE_<{Action}>);",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000456,
-                            "strtype": "MODIFY STATE/Object",
-                            "strval": "GUID24969225-383243S202424102",
-                            "InheritedType": 9
-                          },
-                          {
-                            "nid": 1000457,
-                            "strtype": "MODIFY STATE/State",
-                            "strval": "CHECKED",
-                            "InheritedType": 3
-                          },
-                          {
-                            "nid": 1000458,
-                            "strtype": "MODIFY STATE/Action",
-                            "strval": "ADD",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 10
-                      }
-                    ],
-                    "InheritedType": 4
-                  },
-                  {
-                    "disabled": false,
-                    "nid": 1000459,
-                    "strtype": "_event/EventHandler",
-                    "strval": "UNCHECKED(VALUE_CHANGED)",
-                    "childs": [
-                      {
-                        "nid": 1000460,
-                        "strtype": "_event/name",
-                        "strval": "Event8",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000461,
-                        "strtype": "_event/condition_C",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000462,
-                        "strtype": "_event/condition_P",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000463,
-                        "strtype": "_event/action",
-                        "strval": "MODIFY STATE",
-                        "childs": [
-                          {
-                            "nid": 1000464,
-                            "strtype": "MODIFY STATE/Name",
-                            "strval": "MODIFY STATE",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000465,
-                            "strtype": "MODIFY STATE/Call",
-                            "strval": "ModifyState( <{Object}>, lv.STATE.<{State}>, \"<{Action}>\")",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000466,
-                            "strtype": "MODIFY STATE/CallC",
-                            "strval": "_ui_state_modify( <{Object}>, LV_STATE_<{State}>, _UI_MODIFY_STATE_<{Action}>);",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000467,
-                            "strtype": "MODIFY STATE/Object",
-                            "strval": "GUID24969225-383243S202424102",
-                            "InheritedType": 9
-                          },
-                          {
-                            "nid": 1000468,
-                            "strtype": "MODIFY STATE/State",
-                            "strval": "CHECKED",
-                            "InheritedType": 3
-                          },
-                          {
-                            "nid": 1000469,
-                            "strtype": "MODIFY STATE/Action",
-                            "strval": "REMOVE",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 10
-                      }
-                    ],
-                    "InheritedType": 4
                   }
                 ],
                 "saved_objtypeKey": "BUTTON"
@@ -3402,148 +2438,6 @@
                     "strtype": "BUTTON/Style_main",
                     "strval": "lv.PART.MAIN, Rectangle, Pad, Text, Transform",
                     "InheritedType": 11
-                  },
-                  {
-                    "disabled": false,
-                    "nid": 1000448,
-                    "strtype": "_event/EventHandler",
-                    "strval": "CHECKED(VALUE_CHANGED)",
-                    "childs": [
-                      {
-                        "nid": 1000449,
-                        "strtype": "_event/name",
-                        "strval": "Event9",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000450,
-                        "strtype": "_event/condition_C",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000451,
-                        "strtype": "_event/condition_P",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000452,
-                        "strtype": "_event/action",
-                        "strval": "MODIFY STATE",
-                        "childs": [
-                          {
-                            "nid": 1000453,
-                            "strtype": "MODIFY STATE/Name",
-                            "strval": "MODIFY STATE",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000454,
-                            "strtype": "MODIFY STATE/Call",
-                            "strval": "ModifyState( <{Object}>, lv.STATE.<{State}>, \"<{Action}>\")",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000455,
-                            "strtype": "MODIFY STATE/CallC",
-                            "strval": "_ui_state_modify( <{Object}>, LV_STATE_<{State}>, _UI_MODIFY_STATE_<{Action}>);",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000456,
-                            "strtype": "MODIFY STATE/Object",
-                            "strval": "GUID42193103-383245S315284102",
-                            "InheritedType": 9
-                          },
-                          {
-                            "nid": 1000457,
-                            "strtype": "MODIFY STATE/State",
-                            "strval": "CHECKED",
-                            "InheritedType": 3
-                          },
-                          {
-                            "nid": 1000458,
-                            "strtype": "MODIFY STATE/Action",
-                            "strval": "ADD",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 10
-                      }
-                    ],
-                    "InheritedType": 4
-                  },
-                  {
-                    "disabled": false,
-                    "nid": 1000459,
-                    "strtype": "_event/EventHandler",
-                    "strval": "UNCHECKED(VALUE_CHANGED)",
-                    "childs": [
-                      {
-                        "nid": 1000460,
-                        "strtype": "_event/name",
-                        "strval": "Event10",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000461,
-                        "strtype": "_event/condition_C",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000462,
-                        "strtype": "_event/condition_P",
-                        "strval": "",
-                        "InheritedType": 10
-                      },
-                      {
-                        "nid": 1000463,
-                        "strtype": "_event/action",
-                        "strval": "MODIFY STATE",
-                        "childs": [
-                          {
-                            "nid": 1000464,
-                            "strtype": "MODIFY STATE/Name",
-                            "strval": "MODIFY STATE",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000465,
-                            "strtype": "MODIFY STATE/Call",
-                            "strval": "ModifyState( <{Object}>, lv.STATE.<{State}>, \"<{Action}>\")",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000466,
-                            "strtype": "MODIFY STATE/CallC",
-                            "strval": "_ui_state_modify( <{Object}>, LV_STATE_<{State}>, _UI_MODIFY_STATE_<{Action}>);",
-                            "InheritedType": 10
-                          },
-                          {
-                            "nid": 1000467,
-                            "strtype": "MODIFY STATE/Object",
-                            "strval": "GUID42193103-383245S315284102",
-                            "InheritedType": 9
-                          },
-                          {
-                            "nid": 1000468,
-                            "strtype": "MODIFY STATE/State",
-                            "strval": "CHECKED",
-                            "InheritedType": 3
-                          },
-                          {
-                            "nid": 1000469,
-                            "strtype": "MODIFY STATE/Action",
-                            "strval": "REMOVE",
-                            "InheritedType": 3
-                          }
-                        ],
-                        "InheritedType": 10
-                      }
-                    ],
-                    "InheritedType": 4
                   }
                 ],
                 "saved_objtypeKey": "BUTTON"
@@ -3587,7 +2481,7 @@
                 "strtype": "OBJECT/Position",
                 "intarray": [
                   0,
-                  0
+                  -5
                 ],
                 "InheritedType": 7
               },
@@ -3597,7 +2491,426 @@
                 "strtype": "OBJECT/Size",
                 "intarray": [
                   100,
-                  40
+                  35
+                ],
+                "InheritedType": 7
+              },
+              {
+                "nid": 70,
+                "strtype": "OBJECT/Align",
+                "strval": "BOTTOM_MID",
+                "InheritedType": 3
+              },
+              {
+                "nid": 90,
+                "flags": 1048576,
+                "strtype": "OBJECT/Flags",
+                "InheritedType": 1
+              },
+              {
+                "nid": 110,
+                "strtype": "OBJECT/Clickable",
+                "strval": "False",
+                "InheritedType": 2
+              },
+              {
+                "nid": 230,
+                "strtype": "OBJECT/Scrollable",
+                "strval": "False",
+                "InheritedType": 2
+              },
+              {
+                "nid": 300,
+                "strtype": "OBJECT/Scrollbar_mode",
+                "strval": "AUTO",
+                "InheritedType": 3
+              },
+              {
+                "nid": 310,
+                "strtype": "OBJECT/Scroll_direction",
+                "strval": "ALL",
+                "InheritedType": 3
+              },
+              {
+                "nid": 320,
+                "flags": 1048576,
+                "strtype": "OBJECT/States",
+                "InheritedType": 1
+              },
+              {
+                "part": "lv.PART.MAIN",
+                "childs": [],
+                "nid": 1010,
+                "strtype": "CONTAINER/Style_main",
+                "strval": "lv.PART.MAIN, Rectangle, Pad, Text, Transform",
+                "InheritedType": 11
+              },
+              {
+                "part": "lv.PART.SCROLLBAR",
+                "childs": [],
+                "nid": 1020,
+                "strtype": "CONTAINER/Style_scrollbar",
+                "strval": "lv.PART.SCROLLBAR, Rectangle, Pad",
+                "InheritedType": 11
+              }
+            ],
+            "saved_objtypeKey": "CONTAINER"
+          },
+          {
+            "guid": "GUID10576750-383225S3694102",
+            "deepid": -1171054655,
+            "children": [
+              {
+                "guid": "GUID1809996-383233S5154102",
+                "deepid": 1673683801,
+                "dont_export": false,
+                "locked": false,
+                "properties": [
+                  {
+                    "nid": 10,
+                    "strtype": "OBJECT/Name",
+                    "strval": "LblStation",
+                    "InheritedType": 10
+                  },
+                  {
+                    "nid": 20,
+                    "strtype": "OBJECT/Layout",
+                    "InheritedType": 1
+                  },
+                  {
+                    "Flow": 0,
+                    "Wrap": false,
+                    "Reversed": false,
+                    "MainAlignment": 0,
+                    "CrossAlignment": 0,
+                    "TrackAlignment": 0,
+                    "LayoutType": 0,
+                    "nid": 30,
+                    "strtype": "OBJECT/Layout_type",
+                    "strval": "No_layout",
+                    "InheritedType": 13
+                  },
+                  {
+                    "nid": 40,
+                    "strtype": "OBJECT/Transform",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 50,
+                    "flags": 17,
+                    "strtype": "OBJECT/Position",
+                    "intarray": [
+                      0,
+                      20
+                    ],
+                    "InheritedType": 7
+                  },
+                  {
+                    "nid": 60,
+                    "flags": 51,
+                    "strtype": "OBJECT/Size",
+                    "intarray": [
+                      1,
+                      1
+                    ],
+                    "InheritedType": 7
+                  },
+                  {
+                    "nid": 70,
+                    "strtype": "OBJECT/Align",
+                    "strval": "TOP_MID",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 90,
+                    "strtype": "OBJECT/Flags",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 110,
+                    "strtype": "OBJECT/Clickable",
+                    "strval": "False",
+                    "InheritedType": 2
+                  },
+                  {
+                    "nid": 300,
+                    "strtype": "OBJECT/Scrollbar_mode",
+                    "strval": "AUTO",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 310,
+                    "strtype": "OBJECT/Scroll_direction",
+                    "strval": "ALL",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 320,
+                    "flags": 1048576,
+                    "strtype": "OBJECT/States",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 1010,
+                    "strtype": "LABEL/Label",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 1020,
+                    "strtype": "LABEL/Long_mode",
+                    "strval": "WRAP",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 1030,
+                    "strtype": "LABEL/Text",
+                    "strval": "Radio Station",
+                    "InheritedType": 10
+                  },
+                  {
+                    "part": "lv.PART.MAIN",
+                    "childs": [
+                      {
+                        "nid": 10000,
+                        "strtype": "_style/StyleState",
+                        "strval": "DEFAULT",
+                        "childs": [
+                          {
+                            "nid": 10410,
+                            "strtype": "_style/Text_Color",
+                            "intarray": [
+                              190,
+                              190,
+                              190,
+                              255
+                            ],
+                            "InheritedType": 7
+                          },
+                          {
+                            "nid": 10450,
+                            "strtype": "_style/Text_Font",
+                            "strval": "montserrat_28",
+                            "InheritedType": 3
+                          }
+                        ],
+                        "InheritedType": 1
+                      }
+                    ],
+                    "nid": 1040,
+                    "strtype": "LABEL/Style_main",
+                    "strval": "lv.PART.MAIN, Text, Rectangle, Pad, Transform",
+                    "InheritedType": 11
+                  }
+                ],
+                "saved_objtypeKey": "LABEL"
+              },
+              {
+                "guid": "GUID59445772-383247S5354102",
+                "deepid": 2141901084,
+                "dont_export": false,
+                "locked": false,
+                "properties": [
+                  {
+                    "nid": 10,
+                    "strtype": "OBJECT/Name",
+                    "strval": "LblCurPlaying",
+                    "InheritedType": 10
+                  },
+                  {
+                    "nid": 20,
+                    "strtype": "OBJECT/Layout",
+                    "InheritedType": 1
+                  },
+                  {
+                    "Flow": 0,
+                    "Wrap": false,
+                    "Reversed": false,
+                    "MainAlignment": 0,
+                    "CrossAlignment": 0,
+                    "TrackAlignment": 0,
+                    "LayoutType": 0,
+                    "nid": 30,
+                    "strtype": "OBJECT/Layout_type",
+                    "strval": "No_layout",
+                    "InheritedType": 13
+                  },
+                  {
+                    "nid": 40,
+                    "strtype": "OBJECT/Transform",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 50,
+                    "flags": 17,
+                    "strtype": "OBJECT/Position",
+                    "intarray": [
+                      0,
+                      5
+                    ],
+                    "InheritedType": 7
+                  },
+                  {
+                    "nid": 60,
+                    "flags": 51,
+                    "strtype": "OBJECT/Size",
+                    "intarray": [
+                      1,
+                      1
+                    ],
+                    "InheritedType": 7
+                  },
+                  {
+                    "nid": 70,
+                    "strtype": "OBJECT/Align",
+                    "strval": "CENTER",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 90,
+                    "strtype": "OBJECT/Flags",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 110,
+                    "strtype": "OBJECT/Clickable",
+                    "strval": "False",
+                    "InheritedType": 2
+                  },
+                  {
+                    "nid": 130,
+                    "strtype": "OBJECT/Press_lock",
+                    "strval": "False",
+                    "InheritedType": 2
+                  },
+                  {
+                    "nid": 140,
+                    "strtype": "OBJECT/Click_focusable",
+                    "strval": "False",
+                    "InheritedType": 2
+                  },
+                  {
+                    "nid": 210,
+                    "strtype": "OBJECT/Gesture_bubble",
+                    "strval": "False",
+                    "InheritedType": 2
+                  },
+                  {
+                    "nid": 220,
+                    "strtype": "OBJECT/Snappable",
+                    "strval": "False",
+                    "InheritedType": 2
+                  },
+                  {
+                    "nid": 300,
+                    "strtype": "OBJECT/Scrollbar_mode",
+                    "strval": "AUTO",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 310,
+                    "strtype": "OBJECT/Scroll_direction",
+                    "strval": "ALL",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 320,
+                    "flags": 1048576,
+                    "strtype": "OBJECT/States",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 1010,
+                    "strtype": "LABEL/Label",
+                    "InheritedType": 1
+                  },
+                  {
+                    "nid": 1020,
+                    "strtype": "LABEL/Long_mode",
+                    "strval": "WRAP",
+                    "InheritedType": 3
+                  },
+                  {
+                    "nid": 1030,
+                    "strtype": "LABEL/Text",
+                    "strval": "Currently Playing",
+                    "InheritedType": 10
+                  },
+                  {
+                    "part": "lv.PART.MAIN",
+                    "childs": [
+                      {
+                        "nid": 10000,
+                        "strtype": "_style/StyleState",
+                        "strval": "DEFAULT",
+                        "childs": [
+                          {
+                            "nid": 10450,
+                            "strtype": "_style/Text_Font",
+                            "strval": "montserrat_18",
+                            "InheritedType": 3
+                          }
+                        ],
+                        "InheritedType": 1
+                      }
+                    ],
+                    "nid": 1040,
+                    "strtype": "LABEL/Style_main",
+                    "strval": "lv.PART.MAIN, Text, Rectangle, Pad, Transform",
+                    "InheritedType": 11
+                  }
+                ],
+                "saved_objtypeKey": "LABEL"
+              }
+            ],
+            "dont_export": false,
+            "locked": false,
+            "properties": [
+              {
+                "nid": 10,
+                "strtype": "OBJECT/Name",
+                "strval": "CntnrRadio",
+                "InheritedType": 10
+              },
+              {
+                "nid": 20,
+                "strtype": "OBJECT/Layout",
+                "InheritedType": 1
+              },
+              {
+                "Flow": 0,
+                "Wrap": false,
+                "Reversed": false,
+                "MainAlignment": 0,
+                "CrossAlignment": 0,
+                "TrackAlignment": 0,
+                "LayoutType": 0,
+                "nid": 30,
+                "strtype": "OBJECT/Layout_type",
+                "strval": "No_layout",
+                "InheritedType": 13
+              },
+              {
+                "nid": 40,
+                "strtype": "OBJECT/Transform",
+                "InheritedType": 1
+              },
+              {
+                "nid": 50,
+                "flags": 17,
+                "strtype": "OBJECT/Position",
+                "intarray": [
+                  0,
+                  -40
+                ],
+                "InheritedType": 7
+              },
+              {
+                "nid": 60,
+                "flags": 18,
+                "strtype": "OBJECT/Size",
+                "intarray": [
+                  100,
+                  130
                 ],
                 "InheritedType": 7
               },
@@ -4001,7 +3314,27 @@
           },
           {
             "part": "lv.PART.MAIN",
-            "childs": [],
+            "childs": [
+              {
+                "nid": 10000,
+                "strtype": "_style/StyleState",
+                "strval": "DEFAULT",
+                "childs": [
+                  {
+                    "nid": 10520,
+                    "strtype": "_style/Bg_Color",
+                    "intarray": [
+                      0,
+                      0,
+                      0,
+                      255
+                    ],
+                    "InheritedType": 7
+                  }
+                ],
+                "InheritedType": 1
+              }
+            ],
             "nid": 1040,
             "strtype": "SCREEN/Style_main",
             "strval": "lv.PART.MAIN, Rectangle, Pad, Text",
@@ -4060,7 +3393,7 @@
     "uiExportFolderPath": "C:\\Users\\dronecz\\Documents\\GitHub\\Web_radio\\Web_radio\\src\\ui",
     "projectExportFolderPath": "C:\\Users\\dronecz\\Documents\\GitHub\\Web_radio\\Web_radio",
     "custom_variable_prefix": "uic",
-    "backup_cnt": 6,
+    "backup_cnt": 8,
     "autosave_cnt": 0,
     "lvgl_version": "9.1.0",
     "callfuncsexport": "C_FILE",

@@ -36,7 +36,7 @@ const int daylightOffset_sec = 3600;
 #define DIRECT_MODE  // Uncomment to enable full frame buffer
 
 // Connections ESP32S3 <-> Amplifier
-#define I2S_DOUT 9
+#define I2S_DOUT 10
 #define I2S_BCLK 3
 #define I2S_LRC 1
 Audio audio;
@@ -47,10 +47,10 @@ Arduino_GFX *gfx = create_default_Arduino_GFX();
 #else /* !defined(DISPLAY_DEV_KIT) */
 
 /* More data bus class: https://github.com/moononournation/Arduino_GFX/wiki/Data-Bus-Class */
-Arduino_DataBus *bus = new Arduino_ESP32SPI(41 /* DC */, 40 /* CS */, 12 /* SCK */, 11 /* MOSI */, GFX_NOT_DEFINED /* MISO */, FSPI /* spi_num */);
+Arduino_DataBus *bus = new Arduino_ESP32SPI(17 /* DC */, 15 /* CS */, 12 /* SCK */, 11 /* MOSI */, GFX_NOT_DEFINED /* MISO */, FSPI /* spi_num */);
 
 /* More display class: https://github.com/moononournation/Arduino_GFX/wiki/Display-Class */
-Arduino_GFX *gfx = new Arduino_ST7796(bus, 42 /* RST */, 1 /* rotation */);
+Arduino_GFX *gfx = new Arduino_ST7796(bus, 18 /* RST */, 1 /* rotation */);
 
 #endif /* !defined(DISPLAY_DEV_KIT) */
 /*******************************************************************************
@@ -65,12 +65,25 @@ lv_display_t *disp;
 lv_color_t *disp_draw_buf;
 
 #include "src\FFT.h"
-#define CANVAS_FFT_WIDTH 400  //screenWidth
-#define CANVAS_FFT_HEIGHT 80
-Arduino_Canvas *canvasFFT_gfx = new Arduino_Canvas(CANVAS_FFT_WIDTH /* width */, CANVAS_FFT_HEIGHT /* height */, NULL);
-lv_obj_t *ui_CanvasFFT;
+// --- LVGL canvas ---
+#define CANVAS_WIDTH 385
+#define CANVAS_HEIGHT 40
+static lv_obj_t *canvas;
+static lv_color_t *canvas_buf;
 
-static unsigned long targetAnimTime, targetCountTime;
+#define NUM_BARS 35
+#define BAR_WIDTH (CANVAS_WIDTH / NUM_BARS)
+#define SAMPLE_RATE 44100
+static uint32_t fft_auto_max = 10000;
+float fft_magnitudes[FFT_SIZE / 2] = { 0 };
+
+// --- FFT ---
+#define FFT_SIZE 512
+int16_t fft_buffer[FFT_SIZE * 2];
+size_t fft_index = 0;
+bool ready_to_fft = false;
+
+static unsigned long targetCountTime;
 int year, month, day, hour, minutes, sec = 0;
 
 // use 8 bit precision for LEDC timer
@@ -84,17 +97,24 @@ int year, month, day, hour, minutes, sec = 0;
 
 int brightness = 32;  // initial brightness of the screen 0 - 255
 
-int btnPin[4] = { 7, 10, 16, 17 };
-int lastButtonNum;
+const int buttonCount = 5;
+const int buttonPins[buttonCount] = { 4, 5, 6, 7, 16 };
 
-// Variables will change:
-int buttonState;            // the current reading from the input pin
-int lastButtonState = LOW;  // the previous reading from the input pin
+bool currentStates[buttonCount];
+bool previousStates[buttonCount];
+unsigned long lastDebounceTime[buttonCount];
+const unsigned long debounceDelay = 50;
 
-// the following variables are unsigned longs because the time, measured in
-// milliseconds, will quickly become a bigger number than can be stored in an int.
-unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
-unsigned long debounceDelay = 100;   // the debounce time; increase if the output flickers
+int activeButton = -1;
+
+lv_obj_t *lvglButtons[buttonCount];
+
+// Ukazatele na LVGL tlačítka (musí být deklarovány někde jinde)
+// extern lv_obj_t *ui_Button1;
+// extern lv_obj_t *ui_Button2;
+// extern lv_obj_t *ui_Button3;
+// extern lv_obj_t *ui_Button4;
+// extern lv_obj_t *ui_Button5;
 
 #if LV_USE_LOG != 0
 void my_print(lv_log_level_t level, const char *buf) {
@@ -121,6 +141,89 @@ void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
   lv_disp_flush_ready(disp);
 }
 
+void initButtons() {
+  for (int i = 0; i < buttonCount; i++) {
+    pinMode(buttonPins[i], INPUT_PULLUP);
+    currentStates[i] = digitalRead(buttonPins[i]);
+    previousStates[i] = currentStates[i];
+    lastDebounceTime[i] = 0;
+  }
+
+  // // Mapování LVGL tlačítek na indexy
+  lvglButtons[0] = ui_Button1;
+  lvglButtons[1] = ui_Button2;
+  lvglButtons[2] = ui_Button3;
+  lvglButtons[3] = ui_Button4;
+  lvglButtons[4] = ui_Button5;
+}
+
+void processButtons() {
+  unsigned long currentTime = millis();
+
+  for (int i = 0; i < buttonCount; i++) {
+    int reading = digitalRead(buttonPins[i]);
+
+    if (reading != previousStates[i]) {
+      lastDebounceTime[i] = currentTime;
+    }
+
+    if ((currentTime - lastDebounceTime[i]) > debounceDelay) {
+      if (reading != currentStates[i]) {
+        currentStates[i] = reading;
+
+        if (currentStates[i] == LOW) {
+          activeButton = i;
+          Serial.println();
+          Serial.printf("Tlačítko %d ZAPNUTO\n", i);
+
+          // Odeslání události v LVGL 9
+          if (lvglButtons[i] != nullptr) {
+            lv_obj_send_event(lvglButtons[i], LV_EVENT_CLICKED, NULL);
+          }
+
+          for (int j = 0; j < buttonCount; j++) {
+            if (j != i) {
+              Serial.printf("Tlačítko %d VYPNUTO\n", j);
+            }
+          }
+        }
+      }
+    }
+
+    previousStates[i] = reading;
+  }
+}
+
+void btn_event_handler(lv_event_t *e) {
+  lv_obj_t *btn = (lv_obj_t *)lv_event_get_target(e);  // add (lv_obj_t*) to fix "invalid conversion from 'void*' to 'lv_obj_t*" error
+  lv_event_code_t code = lv_event_get_code(e);
+  Serial.println("Btn event handler reached!");
+  if (code == LV_EVENT_CLICKED) {
+    Serial.print("Kliknuto na tlačítko: ");
+
+    if (btn == ui_Button1) {
+      Serial.println("Button1");
+      // TODO: Akce pro tlačítko 1
+      // např. lv_scr_load(screenA);
+    } else if (btn == ui_Button2) {
+      Serial.println("Button2");
+      // TODO: Akce pro tlačítko 2
+      // např. toggle_led(1);
+    } else if (btn == ui_Button3) {
+      Serial.println("Button3");
+      // TODO: Akce pro tlačítko 3
+      // např. start_animation();
+    } else if (btn == ui_Button4) {
+      Serial.println("Button4");
+      // TODO: Akce pro tlačítko 4
+    } else if (btn == ui_Button5) {
+      Serial.println("Button5");
+      // TODO: Akce pro tlačítko 5
+    }
+  }
+}
+
+
 void countTime() {
   unsigned long currMillisCountTime = millis();
   char numberString[2];
@@ -146,6 +249,182 @@ void countTime() {
   }
 }
 
+/*
+// Linear frequency range configuration
+static const float MIN_FREQ = 50.0f;
+static const float MAX_FREQ = 8000.0f;
+
+void draw_fft_level_meter_lvgl(lv_obj_t *canvas) {
+    static uint8_t peak_y[NUM_BARS] = {0};
+
+    lv_canvas_fill_bg(canvas, lv_color_black(), LV_OPA_COVER);
+
+    lv_layer_t layer;
+    lv_canvas_init_layer(canvas, &layer);
+
+    lv_draw_rect_dsc_t dsc_bar;
+    lv_draw_rect_dsc_init(&dsc_bar);
+    dsc_bar.bg_opa = LV_OPA_COVER;
+
+    lv_draw_rect_dsc_t dsc_peak;
+    lv_draw_rect_dsc_init(&dsc_peak);
+    dsc_peak.bg_color = lv_color_white();
+    dsc_peak.bg_opa = LV_OPA_COVER;
+
+    int min_bin = (int)(MIN_FREQ * FFT_SIZE / SAMPLE_RATE);
+    int max_bin = (int)(MAX_FREQ * FFT_SIZE / SAMPLE_RATE);
+    int bin_range = max_bin - min_bin;
+
+    for (int i = 0; i < NUM_BARS; i++) {
+        int fft_idx = min_bin + i * bin_range / NUM_BARS;
+        int magnitude = (int)(fft_magnitudes[fft_idx] * 100.0f);
+        int h = (magnitude * CANVAS_HEIGHT) / 100;
+        if (h > CANVAS_HEIGHT) h = CANVAS_HEIGHT;
+
+        int x = i * (CANVAS_WIDTH / NUM_BARS);
+        int y_start = CANVAS_HEIGHT - h;
+
+        for (int y = 0; y < h; y++) {
+            float ratio = (float)(y) / CANVAS_HEIGHT;
+            uint8_t r = 0, g = 0;
+
+            if (ratio <= 0.5f) {
+                float f = ratio / 0.5f;
+                r = (uint8_t)(f * 255);
+                g = 255;
+            } else if (ratio <= 0.75f) {
+                float f = (ratio - 0.5f) / 0.25f;
+                r = 255;
+                g = (uint8_t)((1.0f - f) * 255);
+            } else {
+                r = 255;
+                g = 0;
+            }
+
+            dsc_bar.bg_color = lv_color_make(r, g, 0);
+
+            int y_pos = CANVAS_HEIGHT - y - 1;
+            lv_area_t pixel_bar = {
+                x, y_pos,
+                x + (CANVAS_WIDTH / NUM_BARS) - 2, y_pos
+            };
+            lv_draw_rect(&layer, &dsc_bar, &pixel_bar);
+        }
+
+        uint8_t new_peak_y = y_start;
+        if (peak_y[i] == 0 || new_peak_y < peak_y[i]) {
+            peak_y[i] = new_peak_y;
+        } else {
+            peak_y[i] += 1;
+            if (peak_y[i] > CANVAS_HEIGHT - 2)
+                peak_y[i] = CANVAS_HEIGHT - 2;
+        }
+
+        lv_area_t peak_area = { x, peak_y[i], x + (CANVAS_WIDTH / NUM_BARS) - 2, peak_y[i] + 1 };
+        lv_draw_rect(&layer, &dsc_peak, &peak_area);
+    }
+
+    lv_canvas_finish_layer(canvas, &layer);
+}
+*/
+
+void draw_fft_level_meter_lvgl(lv_obj_t *canvas) {
+  static uint8_t peak_y[NUM_BARS] = { 0 };
+
+  lv_canvas_fill_bg(canvas, lv_color_black(), LV_OPA_COVER);
+
+  lv_layer_t layer;
+  lv_canvas_init_layer(canvas, &layer);
+
+  lv_draw_rect_dsc_t dsc_bar;
+  lv_draw_rect_dsc_init(&dsc_bar);
+  dsc_bar.bg_opa = LV_OPA_COVER;
+
+  lv_draw_rect_dsc_t dsc_peak;
+  lv_draw_rect_dsc_init(&dsc_peak);
+  dsc_peak.bg_color = lv_color_white();
+  dsc_peak.bg_opa = LV_OPA_COVER;
+
+  for (int i = 0; i < NUM_BARS; i++) {
+    int fft_idx = i * (FFT_SIZE / 2) / NUM_BARS;
+    int magnitude = fft.get(fft_idx);
+    int h = (magnitude * CANVAS_HEIGHT) / fft_auto_max;
+    if (h > CANVAS_HEIGHT) h = CANVAS_HEIGHT;
+
+    int x = i * BAR_WIDTH;
+    int y_start = CANVAS_HEIGHT - h;
+
+    for (int y = 0; y < h; y++) {
+      float ratio = (float)(y) / CANVAS_HEIGHT;
+      uint8_t r = 0, g = 0;
+
+      if (ratio <= 0.5f) {
+        float f = ratio / 0.5f;
+        r = (uint8_t)(f * 255);
+        g = 255;
+      } else if (ratio <= 0.75f) {
+        float f = (ratio - 0.5f) / 0.25f;
+        r = 255;
+        g = (uint8_t)((1.0f - f) * 255);
+      } else {
+        r = 255;
+        g = 0;
+      }
+
+      dsc_bar.bg_color = lv_color_make(r, g, 0);
+
+      int y_pos = CANVAS_HEIGHT - y - 1;
+      lv_area_t pixel_bar = {
+        x, y_pos,
+        x + BAR_WIDTH - 2, y_pos
+      };
+      lv_draw_rect(&layer, &dsc_bar, &pixel_bar);
+    }
+
+    // Peak indikátor
+    uint8_t new_peak_y = y_start;
+    if (peak_y[i] == 0 || new_peak_y < peak_y[i]) {
+      peak_y[i] = new_peak_y;
+    } else {
+      peak_y[i] += 1;
+      if (peak_y[i] > CANVAS_HEIGHT - 2)
+        peak_y[i] = CANVAS_HEIGHT - 2;
+    }
+
+    lv_area_t peak_area = { x, peak_y[i], x + BAR_WIDTH - 2, peak_y[i] + 1 };
+    lv_draw_rect(&layer, &dsc_peak, &peak_area);
+  }
+
+  lv_canvas_finish_layer(canvas, &layer);
+}
+
+
+void audio_process_i2s(int16_t *outBuff, uint16_t validSamples, uint8_t bitsPerSample, uint8_t channels, bool *continueI2S) {
+  if (bitsPerSample != 16 || channels != 2) return;
+
+  static float previous_sample = 0;
+  static constexpr float alpha = 0.2f;
+  static constexpr float gain = 1.5f;
+
+  for (uint16_t i = 0; i < validSamples * 2; i += 2) {
+    float mono = (outBuff[i] + outBuff[i + 1]) * 0.5f;
+    float filtered = previous_sample + alpha * (mono - previous_sample);
+    previous_sample = filtered;
+    int16_t processed = (int16_t)(filtered * gain);
+
+    if (fft_index < FFT_SIZE * 2) {
+      fft_buffer[fft_index++] = processed;
+    }
+  }
+
+  if (fft_index >= FFT_SIZE * 2) {
+    fft.exec(fft_buffer);
+    fft_index = 0;
+    ready_to_fft = true;
+  }
+
+  *continueI2S = true;
+}
 
 void printLocalTime() {
   struct tm timeinfo;
@@ -160,65 +439,6 @@ void printLocalTime() {
 void timeavailable(struct timeval *t) {
   Serial.println("Got time adjustment from NTP!");
   printLocalTime();
-}
-
-uint8_t getBtn() {
-  bool digRead[4];
-  uint8_t dataRead = 0;
-  digRead[0] = digitalRead(btnPin[0]);
-  digRead[1] = digitalRead(btnPin[1]);
-  digRead[2] = digitalRead(btnPin[2]);
-  digRead[3] = digitalRead(btnPin[3]);
-
-  if (digRead[0] == 0) {  // Select button
-    dataRead = 1;
-  }
-  if (digRead[1] == 0) {  // Back button
-    dataRead = 2;
-  }
-  if (digRead[2] == 0) {  // Menu button
-    dataRead = 3;
-  }
-  if (digRead[3] == 0) {  // Menu button
-    dataRead = 4;
-  }
-
-  return dataRead;
-}
-
-// This code is based on Debounce sketch provided by Arduino IDE
-void readButtons() {
-
-  // Read the state of the button
-  uint8_t reading = getBtn();
-
-  // check to see if you just pressed the button
-  // (i.e. the input went from LOW to HIGH), and you've waited long enough
-  // since the last press to ignore any noise:
-
-  // If the switch changed, due to noise or pressing:
-  if (reading != lastButtonNum) {
-    // reset the debouncing timer
-    lastDebounceTime = millis();
-  }
-
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    // whatever the reading is at, it's been there for longer than the debounce
-    // delay, so take it as the actual current state:
-
-    // if the button state has changed:
-    if (reading != buttonState) {
-      buttonState = reading;
-      if (buttonState != 0) {
-        Serial.println("Buttonn nm." + String(buttonState) + " was pressed!");
-        //changeScreen(buttonState);
-      }
-      //buttonEvent(reading);
-    }
-  }
-
-  // save the reading. Next time through the loop, it'll be the lastButtonNum:
-  lastButtonNum = reading;
 }
 
 // Print station info
@@ -269,50 +489,12 @@ void audio_eof_speech(const char *info) {
   Serial.println(info);
 }
 
-//void audio_process_i2s(int16_t* outBuff, uint16_t validSamples, uint8_t bitsPerSample, uint8_t channels, bool *continueI2S) {
-  // raw_data[raw_data_idx++] = *validSamples;
-  // if (raw_data_idx >= WAVE_SIZE) {
-  //   Serial.println(String(raw_data_idx));
-  //   fft.exec((int16_t *)raw_data);
-  //   draw_fft_level_meter(canvasFFT_gfx);
-  //   lv_obj_invalidate(ui_CanvasFFT);
-  //   raw_data_idx = 0;
-//   }
-//   *continueI2S = true;
-// }
-
-// void audio_process_i2s(int16_t* outBuff, uint16_t validSamples, uint8_t bitsPerSample, uint8_t channels, bool *continueI2S){
-
-//     int16_t sineWaveTable[44] = {
-//          0,   3743,   7377,  10793,  14082,  17136,  19848,  22113,  23825,  24908,
-//       25311,  24908,  23825,  22113,  19848,  17136,  14082,  10793,   7377,   3743,
-//          0,  -3743,  -7377, -10793, -14082, -17136, -19848, -22113, -23825, -24908,
-//      -25311, -24908, -23825, -22113, -19848, -17136, -14082, -10793,  -7377,  -3743
-//     };
-
-//     static uint8_t tabPtr = 0;
-//     int16_t* sample[2]; // assume 2 channels, 16bit
-//     for(int i= 0; i < validSamples; i++){
-//         *(sample + 0) = outBuff + i * 2;     // channel left
-//         *(sample + 1) = outBuff + i * 2 + 1; // channel right
-
-//         *(*sample + 0) = (sineWaveTable[tabPtr] /50 + *(*sample + 0));
-//         *(*sample + 1) = (sineWaveTable[tabPtr] /50 + *(*sample + 1));
-//         tabPtr++;
-//         if(tabPtr == 44) tabPtr = 0;
-//     }
-//    *continueI2S = true;
-// }
-
 void setup() {
   Serial.begin(115200);
   // Serial.setDebugOutput(true);
   // while(!Serial);
 
-  pinMode(btnPin[0], INPUT_PULLUP);
-  pinMode(btnPin[1], INPUT_PULLUP);
-  pinMode(btnPin[2], INPUT_PULLUP);
-  pinMode(btnPin[3], INPUT_PULLUP);
+  initButtons();
 
   Serial.println("Arduino_GFX LVGL_Arduino_v9 example ");
   String LVGL_Arduino = String('V') + lv_version_major() + "." + lv_version_minor() + "." + lv_version_patch();
@@ -321,7 +503,7 @@ void setup() {
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
 
   // Volume (0-100)
-  audio.setVolume(10);
+  audio.setVolume(7);
 
 #ifdef GFX_EXTRA_PRE_INIT
   GFX_EXTRA_PRE_INIT();
@@ -366,7 +548,7 @@ void setup() {
   //configTzTime(time_zone, ntpServer1, ntpServer2);
 
   //connect to WiFi
-  Serial.printf("Connecting to %s ", ssid);
+  Serial.printf("Connecting to %s ", SECRET_SSID);
 
   WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
@@ -443,37 +625,26 @@ void setup() {
 
   ui_init();
 
-  // create lvgl canvas to draw FFT
-  // canvasFFT_gfx->begin();
+  lv_obj_add_event_cb(ui_Button1, btn_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button2, btn_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button3, btn_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button4, btn_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button5, btn_event_handler, LV_EVENT_ALL, NULL);
 
-  // /*Create a buffer for the canvas*/
+  LV_DRAW_BUF_DEFINE_STATIC(canvas_buf, CANVAS_WIDTH, CANVAS_HEIGHT, LV_COLOR_FORMAT_RGB565);
+  LV_DRAW_BUF_INIT_STATIC(canvas_buf);
 
-  // LV_DRAW_BUF_DEFINE_STATIC(draw_buff, CANVAS_FFT_WIDTH, CANVAS_FFT_HEIGHT, LV_COLOR_FORMAT_RGB565);
-  // LV_DRAW_BUF_INIT_STATIC(draw_buff);
+  /*Create a canvas and initialize its palette*/
+  canvas = lv_canvas_create(lv_screen_active());
+  lv_canvas_set_draw_buf(canvas, &canvas_buf);
+  lv_obj_set_parent(canvas, ui_CntnrRadio);
+  lv_obj_align(canvas, LV_ALIGN_BOTTOM_MID, 0, -5);
+  lv_obj_move_background(canvas);
+  lv_canvas_fill_bg(canvas, lv_color_black(), LV_OPA_TRANSP);
 
-  // // /*Create a canvas and initialize its palette*/
-
-  // //ui_CanvasFFT = lv_canvas_create(ui_CntnrRadio);
-  // ui_CanvasFFT = lv_canvas_create(lv_scr_act());
-  // lv_canvas_set_buffer(ui_CanvasFFT, (lv_color_t *)canvasFFT_gfx->getFramebuffer(), CANVAS_FFT_WIDTH, CANVAS_FFT_HEIGHT, LV_COLOR_FORMAT_RGB565);
-  // //lv_canvas_set_draw_buf(ui_CanvasFFT, &draw_buff);
-
-  // //lv_canvas_set_px(ui_CanvasFFT, 0, 440, lv_color_black(), LV_OPA_COVER);
-  // lv_canvas_fill_bg(ui_CanvasFFT, lv_color_hex3(0xccc), LV_OPA_TRANSP);
-  // //lv_obj_move_foreground(ui_CanvasFFT);
-  // //lv_obj_remove_style_all(ui_CntnrVisualisation);
-
-  // lv_obj_set_width(ui_CanvasFFT, CANVAS_FFT_WIDTH);
-  // lv_obj_set_height(ui_CanvasFFT, CANVAS_FFT_HEIGHT);
-  // lv_obj_set_x(ui_CanvasFFT, 0);
-  // lv_obj_set_y(ui_CanvasFFT, 80);
-  // lv_obj_set_align(ui_CanvasFFT, LV_ALIGN_CENTER);
-
-  // //lv_obj_center(ui_CanvasFFT);
-
-  // lv_layer_t layer;
-  // lv_canvas_init_layer(ui_CanvasFFT, &layer);
-  // lv_canvas_finish_layer(ui_CanvasFFT, &layer);
+  lv_layer_t layer;
+  lv_canvas_init_layer(canvas, &layer);
+  lv_canvas_finish_layer(canvas, &layer);
 
   char numberMin[2], numberHrs[2];
   char numberDate[9];
@@ -493,13 +664,23 @@ void setup() {
 
 void loop() {
   audio.loop();
+
+  if (ready_to_fft) {
+    ready_to_fft = false;
+    static unsigned long last_update = 0;
+    const unsigned long update_interval = 50;  // ms
+
+    if (millis() - last_update >= update_interval) {
+      last_update = millis();
+      draw_fft_level_meter_lvgl(canvas);
+    }
+  }
   // set the brightness on LEDC channel 0
   //ledcWriteChannel(LEDC_CHANNEL, brightness);
 
   lv_task_handler(); /* let the GUI do its work */
-  readButtons();
+  processButtons();
   countTime();
-
 
 #ifdef DIRECT_MODE
 #if defined(CANVAS) || defined(RGB_PANEL)
@@ -512,56 +693,4 @@ void loop() {
   gfx->flush();
 #endif
 #endif  // !DIRECT_MODE
-
-  vTaskDelay(1);
 }
-
-
-//**************************************************************************************************
-// DISPLAY SPECTRUM *
-//**************************************************************************************************
-// *
-//**************************************************************************************************
-/*
-
-https://github.com/blotfi/ESP32-Radio-with-Spectrum-analyzer/blob/master/src/Esp32_radio.cpp
-
-uint8_t bands = 14; // Number of bands Spectrum Analyzer
-uint8_t prevbands = 0; // Number previous band Spectrum Analyzer
-uint8_t spectrum[14][3]; // Array per Spectrum Analyzer
-const uint8_t Spectrum_y0 = 150;
-const uint8_t Spectrum_hy = 70;
-
-void displaySpectrum() {
-    if (bands<=0 || bands>14)  return;
-    uint8_t larg = dsp_getwidth() / bands-2;
-    uint16_t  posi = 5; // start location of the first bar
-    boolean visual = true;
-//    if (enc_menu_mode == MENU)
-//    {
-//        visual = false;
-//    }
-    if (bands != prevbands) {
-        prevbands = bands;
-    if (visual)
-        dsp_fillRect (0, Spectrum_y0, dsp_getwidth(), Spectrum_hy + 1, BLACK);
-    }
-    for (uint8_t i = 0; i < bands; i++) // Handle all sections
-    {
-        if (visual) {
-            if (spectrum[i][0] > spectrum[i][1]) {
-                dsp_fillRect (posi, Spectrum_y0 + Spectrum_hy - spectrum[i][0], larg, spectrum[i][0], GREEN);
-                dsp_fillRect (posi, Spectrum_y0, larg, Spectrum_hy - spectrum[i][0], BLACK);
-            } else
-                dsp_fillRect (posi, Spectrum_y0, larg, Spectrum_hy - spectrum[i][0], BLACK);
-        }
-        if (spectrum[i][2] > 0) spectrum[i][2]--;
-        if (spectrum[i][0] > spectrum[i][2]) spectrum[i][2] = spectrum[i][0];
-        if (visual)
-            dsp_fillRect (posi, Spectrum_y0 + Spectrum_hy - spectrum[i][2] - 3, larg, 2, RED);
-        spectrum[i][1] = spectrum[i][0];
-        posi += larg + 2;
-    }
-}
-
-*/
