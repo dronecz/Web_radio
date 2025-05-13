@@ -110,11 +110,11 @@ int activeButton = -1;
 lv_obj_t *lvglButtons[buttonCount];
 
 // Ukazatele na LVGL tlačítka (musí být deklarovány někde jinde)
-// extern lv_obj_t *ui_Button1;
-// extern lv_obj_t *ui_Button2;
-// extern lv_obj_t *ui_Button3;
-// extern lv_obj_t *ui_Button4;
-// extern lv_obj_t *ui_Button5;
+extern lv_obj_t *ui_Button1;
+extern lv_obj_t *ui_Button2;
+extern lv_obj_t *ui_Button3;
+extern lv_obj_t *ui_Button4;
+extern lv_obj_t *ui_Button5;
 
 #if LV_USE_LOG != 0
 void my_print(lv_log_level_t level, const char *buf) {
@@ -148,13 +148,6 @@ void initButtons() {
     previousStates[i] = currentStates[i];
     lastDebounceTime[i] = 0;
   }
-
-  // // Mapování LVGL tlačítek na indexy
-  lvglButtons[0] = ui_Button1;
-  lvglButtons[1] = ui_Button2;
-  lvglButtons[2] = ui_Button3;
-  lvglButtons[3] = ui_Button4;
-  lvglButtons[4] = ui_Button5;
 }
 
 void processButtons() {
@@ -173,18 +166,17 @@ void processButtons() {
 
         if (currentStates[i] == LOW) {
           activeButton = i;
-          Serial.println();
-          Serial.printf("Tlačítko %d ZAPNUTO\n", i);
 
-          // Odeslání události v LVGL 9
-          if (lvglButtons[i] != nullptr) {
-            lv_obj_send_event(lvglButtons[i], LV_EVENT_CLICKED, NULL);
-          }
-
+          // remove "checked" state from all buttons
           for (int j = 0; j < buttonCount; j++) {
-            if (j != i) {
-              Serial.printf("Tlačítko %d VYPNUTO\n", j);
-            }
+              //find ui_Container[n] as children of ui_Buttons[n], "0" means first child of the object
+              lv_obj_t * container = lv_obj_get_child(lvglButtons[j], 0);
+              _ui_state_modify(container, LV_STATE_CHECKED, _UI_MODIFY_STATE_REMOVE);
+          }
+          // check if lvglButtons[i] is not empty
+          if (lvglButtons[i] != nullptr) {
+            // send "click" event to the right button
+            lv_obj_send_event(lvglButtons[i], LV_EVENT_CLICKED, NULL);
           }
         }
       }
@@ -197,28 +189,25 @@ void processButtons() {
 void btn_event_handler(lv_event_t *e) {
   lv_obj_t *btn = (lv_obj_t *)lv_event_get_target(e);  // add (lv_obj_t*) to fix "invalid conversion from 'void*' to 'lv_obj_t*" error
   lv_event_code_t code = lv_event_get_code(e);
-  Serial.println("Btn event handler reached!");
+
   if (code == LV_EVENT_CLICKED) {
     Serial.print("Kliknuto na tlačítko: ");
 
     if (btn == ui_Button1) {
       Serial.println("Button1");
-      // TODO: Akce pro tlačítko 1
-      // např. lv_scr_load(screenA);
+      _ui_state_modify(ui_Container1, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
     } else if (btn == ui_Button2) {
       Serial.println("Button2");
-      // TODO: Akce pro tlačítko 2
-      // např. toggle_led(1);
+      _ui_state_modify(ui_Container2, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
     } else if (btn == ui_Button3) {
       Serial.println("Button3");
-      // TODO: Akce pro tlačítko 3
-      // např. start_animation();
+      _ui_state_modify(ui_Container3, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
     } else if (btn == ui_Button4) {
       Serial.println("Button4");
-      // TODO: Akce pro tlačítko 4
+      _ui_state_modify(ui_Container4, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
     } else if (btn == ui_Button5) {
       Serial.println("Button5");
-      // TODO: Akce pro tlačítko 5
+      _ui_state_modify(ui_Container5, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
     }
   }
 }
@@ -248,85 +237,6 @@ void countTime() {
     //Serial.println("Time is " + String(hh) + (":") + String(mm) + (":") + String(ss));
   }
 }
-
-/*
-// Linear frequency range configuration
-static const float MIN_FREQ = 50.0f;
-static const float MAX_FREQ = 8000.0f;
-
-void draw_fft_level_meter_lvgl(lv_obj_t *canvas) {
-    static uint8_t peak_y[NUM_BARS] = {0};
-
-    lv_canvas_fill_bg(canvas, lv_color_black(), LV_OPA_COVER);
-
-    lv_layer_t layer;
-    lv_canvas_init_layer(canvas, &layer);
-
-    lv_draw_rect_dsc_t dsc_bar;
-    lv_draw_rect_dsc_init(&dsc_bar);
-    dsc_bar.bg_opa = LV_OPA_COVER;
-
-    lv_draw_rect_dsc_t dsc_peak;
-    lv_draw_rect_dsc_init(&dsc_peak);
-    dsc_peak.bg_color = lv_color_white();
-    dsc_peak.bg_opa = LV_OPA_COVER;
-
-    int min_bin = (int)(MIN_FREQ * FFT_SIZE / SAMPLE_RATE);
-    int max_bin = (int)(MAX_FREQ * FFT_SIZE / SAMPLE_RATE);
-    int bin_range = max_bin - min_bin;
-
-    for (int i = 0; i < NUM_BARS; i++) {
-        int fft_idx = min_bin + i * bin_range / NUM_BARS;
-        int magnitude = (int)(fft_magnitudes[fft_idx] * 100.0f);
-        int h = (magnitude * CANVAS_HEIGHT) / 100;
-        if (h > CANVAS_HEIGHT) h = CANVAS_HEIGHT;
-
-        int x = i * (CANVAS_WIDTH / NUM_BARS);
-        int y_start = CANVAS_HEIGHT - h;
-
-        for (int y = 0; y < h; y++) {
-            float ratio = (float)(y) / CANVAS_HEIGHT;
-            uint8_t r = 0, g = 0;
-
-            if (ratio <= 0.5f) {
-                float f = ratio / 0.5f;
-                r = (uint8_t)(f * 255);
-                g = 255;
-            } else if (ratio <= 0.75f) {
-                float f = (ratio - 0.5f) / 0.25f;
-                r = 255;
-                g = (uint8_t)((1.0f - f) * 255);
-            } else {
-                r = 255;
-                g = 0;
-            }
-
-            dsc_bar.bg_color = lv_color_make(r, g, 0);
-
-            int y_pos = CANVAS_HEIGHT - y - 1;
-            lv_area_t pixel_bar = {
-                x, y_pos,
-                x + (CANVAS_WIDTH / NUM_BARS) - 2, y_pos
-            };
-            lv_draw_rect(&layer, &dsc_bar, &pixel_bar);
-        }
-
-        uint8_t new_peak_y = y_start;
-        if (peak_y[i] == 0 || new_peak_y < peak_y[i]) {
-            peak_y[i] = new_peak_y;
-        } else {
-            peak_y[i] += 1;
-            if (peak_y[i] > CANVAS_HEIGHT - 2)
-                peak_y[i] = CANVAS_HEIGHT - 2;
-        }
-
-        lv_area_t peak_area = { x, peak_y[i], x + (CANVAS_WIDTH / NUM_BARS) - 2, peak_y[i] + 1 };
-        lv_draw_rect(&layer, &dsc_peak, &peak_area);
-    }
-
-    lv_canvas_finish_layer(canvas, &layer);
-}
-*/
 
 void draw_fft_level_meter_lvgl(lv_obj_t *canvas) {
   static uint8_t peak_y[NUM_BARS] = { 0 };
@@ -625,6 +535,25 @@ void setup() {
 
   ui_init();
 
+  // // Mapování LVGL tlačítek na indexy
+  lvglButtons[0] = ui_Button1;
+  lvglButtons[1] = ui_Button2;
+  lvglButtons[2] = ui_Button3;
+  lvglButtons[3] = ui_Button4;
+  lvglButtons[4] = ui_Button5;
+
+  for (int i = 0; i < buttonCount; i++) {
+    Serial.print("lvglButtons[");
+    Serial.print(i);
+    Serial.print("] = ");
+
+    if (lvglButtons[i] != nullptr) {
+      Serial.println((uintptr_t)lvglButtons[i], HEX);  // vypíše adresu v paměti
+    } else {
+      Serial.println("nullptr");  // tlačítko není přiřazeno
+    }
+  }
+
   lv_obj_add_event_cb(ui_Button1, btn_event_handler, LV_EVENT_ALL, NULL);
   lv_obj_add_event_cb(ui_Button2, btn_event_handler, LV_EVENT_ALL, NULL);
   lv_obj_add_event_cb(ui_Button3, btn_event_handler, LV_EVENT_ALL, NULL);
@@ -668,7 +597,7 @@ void loop() {
   if (ready_to_fft) {
     ready_to_fft = false;
     static unsigned long last_update = 0;
-    const unsigned long update_interval = 50;  // ms
+    const unsigned long update_interval = 25;  // ms
 
     if (millis() - last_update >= update_interval) {
       last_update = millis();

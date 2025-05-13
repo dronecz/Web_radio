@@ -783,11 +783,11 @@
             "deepid": -2010505554,
             "children": [
               {
-                "guid": "GUID64045595-383229S1864102",
+                "guid": "GUID17656483-383242S5754102",
                 "deepid": -330908728,
                 "children": [
                   {
-                    "guid": "GUID89281369-383231S9954102",
+                    "guid": "GUID19973755-383241S5754102",
                     "deepid": 1086814332,
                     "dont_export": false,
                     "locked": false,
@@ -978,7 +978,7 @@
                     "flags": 17,
                     "strtype": "OBJECT/Position",
                     "intarray": [
-                      0,
+                      -160,
                       0
                     ],
                     "InheritedType": 7
@@ -1447,11 +1447,11 @@
                 "saved_objtypeKey": "BUTTON"
               },
               {
-                "guid": "GUID17656483-383242S5754102",
+                "guid": "GUID64045595-383229S1864102",
                 "deepid": -330908728,
                 "children": [
                   {
-                    "guid": "GUID19973755-383241S5754102",
+                    "guid": "GUID89281369-383231S9954102",
                     "deepid": 1086814332,
                     "dont_export": false,
                     "locked": false,
@@ -1642,7 +1642,7 @@
                     "flags": 17,
                     "strtype": "OBJECT/Position",
                     "intarray": [
-                      -160,
+                      0,
                       0
                     ],
                     "InheritedType": 7
@@ -3409,7 +3409,7 @@
     "drive_fatfs_path": "",
     "naming": "Name",
     "naming_force_lowercase": false,
-    "nidcnt": 1000470,
+    "nidcnt": 1000481,
     "BitDepth": 16,
     "Name": "Escape_game"
   }
