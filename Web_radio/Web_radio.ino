@@ -33,13 +33,21 @@ const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;
 const int daylightOffset_sec = 3600;
 
-#define DIRECT_MODE  // Uncomment to enable full frame buffer
+//#define DIRECT_MODE  // Uncomment to enable full frame buffer
 
 // Connections ESP32S3 <-> Amplifier
 #define I2S_DOUT 10
 #define I2S_BCLK 3
 #define I2S_LRC 1
 Audio audio;
+
+#define volumePin 14
+const int samples = 10;
+unsigned long lastVolumeCheck = 0;
+const unsigned long volumeCheckInterval = 250;
+const int changeTreshold = 1;  // Minimální rozdíl pro aktualizaci
+int lastSliderValue = -1;      // Interní proměnné pro sledování stavu
+/*---------------------------------------------*/
 
 /* More dev device declaration: https://github.com/moononournation/Arduino_GFX/wiki/Dev-Device-Declaration */
 #if defined(DISPLAY_DEV_KIT)
@@ -169,9 +177,9 @@ void processButtons() {
 
           // remove "checked" state from all buttons
           for (int j = 0; j < buttonCount; j++) {
-              //find ui_Container[n] as children of ui_Buttons[n], "0" means first child of the object
-              lv_obj_t * container = lv_obj_get_child(lvglButtons[j], 0);
-              _ui_state_modify(container, LV_STATE_CHECKED, _UI_MODIFY_STATE_REMOVE);
+            //find ui_Container[n] as children of ui_Buttons[n], "0" means first child of the object
+            lv_obj_t *container = lv_obj_get_child(lvglButtons[j], 0);
+            _ui_state_modify(container, LV_STATE_CHECKED, _UI_MODIFY_STATE_REMOVE);
           }
           // check if lvglButtons[i] is not empty
           if (lvglButtons[i] != nullptr) {
@@ -209,6 +217,34 @@ void btn_event_handler(lv_event_t *e) {
       Serial.println("Button5");
       _ui_state_modify(ui_Container5, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
     }
+  }
+}
+
+int read_potentiometer() {
+  int sum = 0;
+  for (int i = 0; i < samples; i++) {
+    sum += analogRead(volumePin);
+    delay(2);
+  }
+  return sum / 10;
+}
+
+void readVolumeValue() {
+  unsigned long now = millis();
+  if (now - lastVolumeCheck < volumeCheckInterval) return;
+
+  lastVolumeCheck = now;
+
+  int raw = read_potentiometer();
+  int volume = map(raw, 0, 4095, 0, 21);
+
+  if (abs(volume - lastSliderValue) >= changeTreshold) {
+    lv_slider_set_value(ui_SldrVolume, volume, LV_ANIM_OFF);
+    lastSliderValue = volume;
+    audio.setVolume(volume);
+
+    Serial.print("Aktualizace slideru na: ");
+    Serial.println(volume);
   }
 }
 
@@ -259,7 +295,7 @@ void draw_fft_level_meter_lvgl(lv_obj_t *canvas) {
     int fft_idx = i * (FFT_SIZE / 2) / NUM_BARS;
     int magnitude = fft.get(fft_idx);
     int h = (magnitude * CANVAS_HEIGHT) / fft_auto_max;
-    if (h > CANVAS_HEIGHT) h = CANVAS_HEIGHT;
+    if (h > CANVAS_HEIGHT) h = CANVAS_HEIGHT - 1;
 
     int x = i * BAR_WIDTH;
     int y_start = CANVAS_HEIGHT - h;
@@ -592,12 +628,13 @@ void setup() {
 }
 
 void loop() {
+
   audio.loop();
 
   if (ready_to_fft) {
     ready_to_fft = false;
     static unsigned long last_update = 0;
-    const unsigned long update_interval = 25;  // ms
+    const unsigned long update_interval = 100;  // ms
 
     if (millis() - last_update >= update_interval) {
       last_update = millis();
@@ -606,7 +643,7 @@ void loop() {
   }
   // set the brightness on LEDC channel 0
   //ledcWriteChannel(LEDC_CHANNEL, brightness);
-
+  readVolumeValue();
   lv_task_handler(); /* let the GUI do its work */
   processButtons();
   countTime();
