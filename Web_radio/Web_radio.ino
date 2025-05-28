@@ -18,6 +18,9 @@ Sketch settings for ESP32-S3 Dev module:
  Google -> ESP32-audioI2S fft
 
  https://youtu.be/IslG_mzpc1g
+
+ https://randomnerdtutorials.com/esp32-tft-lvgl-weather-station/
+ https://www.dovora.com/resources/weather-icons/
  
  */
 #include <Arduino_GFX_Library.h>
@@ -28,6 +31,7 @@ Sketch settings for ESP32-S3 Dev module:
 #include <WiFi.h>
 #include "time.h"
 #include "sntp.h"
+#include "stations.h"
 
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;
@@ -40,14 +44,6 @@ const int daylightOffset_sec = 3600;
 #define I2S_BCLK 3
 #define I2S_LRC 1
 Audio audio;
-
-#define volumePin 14
-const int samples = 10;
-unsigned long lastVolumeCheck = 0;
-const unsigned long volumeCheckInterval = 250;
-const int changeTreshold = 1;  // Minimální rozdíl pro aktualizaci
-int lastSliderValue = -1;      // Interní proměnné pro sledování stavu
-/*---------------------------------------------*/
 
 /* More dev device declaration: https://github.com/moononournation/Arduino_GFX/wiki/Dev-Device-Declaration */
 #if defined(DISPLAY_DEV_KIT)
@@ -114,6 +110,16 @@ unsigned long lastDebounceTime[buttonCount];
 const unsigned long debounceDelay = 50;
 
 int activeButton = -1;
+
+int volumePin = 14;
+const int samples = 10;
+unsigned long lastVolumeCheck = 0;
+const unsigned long volumeCheckInterval = 250;
+const int changeTreshold = 1;  // Minimální rozdíl pro aktualizaci
+int lastSliderValue = -1;      // Interní proměnné pro sledování stavu
+
+const int numOfStations = sizeof(stations) / sizeof(stations[0]);
+int currentStation = 0;
 
 lv_obj_t *lvglButtons[buttonCount];
 
@@ -204,18 +210,23 @@ void btn_event_handler(lv_event_t *e) {
     if (btn == ui_Button1) {
       Serial.println("Button1");
       _ui_state_modify(ui_Container1, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
+      connectToStation(0);
     } else if (btn == ui_Button2) {
       Serial.println("Button2");
       _ui_state_modify(ui_Container2, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
+      connectToStation(1);
     } else if (btn == ui_Button3) {
       Serial.println("Button3");
       _ui_state_modify(ui_Container3, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
+      connectToStation(2);
     } else if (btn == ui_Button4) {
       Serial.println("Button4");
       _ui_state_modify(ui_Container4, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
+      connectToStation(3);
     } else if (btn == ui_Button5) {
       Serial.println("Button5");
       _ui_state_modify(ui_Container5, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
+      connectToStation(4);
     }
   }
 }
@@ -247,7 +258,11 @@ void readVolumeValue() {
     Serial.println(volume);
   }
 }
-
+void connectToStation(int stationIndex){
+  audio.stopSong();
+  audio.connecttohost(stations[stationIndex]);
+  Serial.println("Connected to: " + String(stations[stationIndex]));
+}
 
 void countTime() {
   unsigned long currMillisCountTime = millis();
@@ -619,10 +634,8 @@ void setup() {
   lv_label_set_text(ui_LblMin, numberMin);
   sprintf(numberHrs, "%02d", hour);
   lv_label_set_text(ui_LblHrs, numberHrs);
-
-  // Radio stream, e.g. Byte.fm
-  //audio.connecttohost("http://www.byte.fm/stream/bytefm.m3u");
-  audio.connecttohost("http://rozhlas.stream/radiozurnal_mp3_128.mp3");
+  
+  connectToStation(currentStation);
 
   Serial.println("Setup done");
 }

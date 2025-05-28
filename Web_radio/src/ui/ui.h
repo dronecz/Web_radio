@@ -38,6 +38,10 @@ extern lv_anim_t * VolumeHide_Animation(lv_obj_t * TargetObject, int delay);
 extern lv_obj_t * ui____initial_actions0;
 
 // IMAGES AND IMAGE SETS
+LV_IMG_DECLARE(
+    ui_img_weather_icons_dovora_interactive_128px_day_clear_png);    // assets/weather_icons_dovora_interactive_128px/day_clear.png
+LV_IMG_DECLARE(
+    ui_img_weather_icons_dovora_interactive_128px_cloudy_png);    // assets/weather_icons_dovora_interactive_128px/cloudy.png
 LV_IMG_DECLARE(ui_img_indicator_hor_small_png);    // assets/indicator_hor_small.png
 
 // FONTS
