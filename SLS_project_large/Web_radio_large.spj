@@ -1512,8 +1512,8 @@
                                 "nid": 20520,
                                 "strtype": "_style/Bg_Color",
                                 "intarray": [
-                                  22,
-                                  102,
+                                  55,
+                                  255,
                                   0,
                                   255
                                 ],
@@ -1909,8 +1909,8 @@
                                 "nid": 20520,
                                 "strtype": "_style/Bg_Color",
                                 "intarray": [
-                                  22,
-                                  102,
+                                  55,
+                                  255,
                                   0,
                                   255
                                 ],
@@ -2306,8 +2306,8 @@
                                 "nid": 20520,
                                 "strtype": "_style/Bg_Color",
                                 "intarray": [
-                                  22,
-                                  102,
+                                  55,
+                                  255,
                                   0,
                                   255
                                 ],
@@ -2703,8 +2703,8 @@
                                 "nid": 20520,
                                 "strtype": "_style/Bg_Color",
                                 "intarray": [
-                                  22,
-                                  102,
+                                  55,
+                                  255,
                                   0,
                                   255
                                 ],
@@ -3100,8 +3100,8 @@
                                 "nid": 20520,
                                 "strtype": "_style/Bg_Color",
                                 "intarray": [
-                                  22,
-                                  102,
+                                  55,
+                                  255,
                                   0,
                                   255
                                 ],
@@ -4434,6 +4434,12 @@
                         "InheritedType": 5
                       },
                       {
+                        "nid": 10620,
+                        "strtype": "_style/Bg_Image_opa",
+                        "integer": 255,
+                        "InheritedType": 6
+                      },
+                      {
                         "nid": 10040,
                         "strtype": "_style/Transform_rotation",
                         "integer": 1800,
@@ -4883,7 +4889,7 @@
     "description": "",
     "board": "Arduino with TFT_eSPI",
     "board_version": "v2.0.0",
-    "editor_version": "1.5.2",
+    "editor_version": "1.5.3",
     "image": "",
     "export_temp_image": false,
     "force_export_images": false,
@@ -4894,10 +4900,10 @@
     "theme_dark": true,
     "theme_color1": 5,
     "theme_color2": 0,
-    "uiExportFolderPath": "C:\\Users\\dronecz\\Documents\\GitHub\\Web_radio\\Web_radio\\src\\ui",
+    "uiExportFolderPath": "C:\\Users\\dronecz\\Documents\\GitHub\\Web_radio\\Web_radio\\src\\ui\\large",
     "projectExportFolderPath": "C:\\Users\\dronecz\\Documents\\GitHub\\Web_radio\\Web_radio",
     "custom_variable_prefix": "uic",
-    "backup_cnt": 12,
+    "backup_cnt": 13,
     "autosave_cnt": 0,
     "group_color_cnt": 0,
     "lvgl_version": "9.1.0",

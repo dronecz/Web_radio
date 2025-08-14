@@ -5,6 +5,10 @@ SET(SOURCES ui_Screen1.c
     ui_img_weather_icons_dovora_interactive_128px_day_clear_png.c
     ui_img_weather_icons_dovora_interactive_128px_cloudy_png.c
     ui_img_indicator_hor_small_png.c
+    fonts/ui_font_Roboto_Reg_10.c
+    fonts/ui_font_Roboto_Reg_12.c
+    fonts/ui_font_Roboto_Reg_14.c
+    fonts/ui_font_Roboto_Reg_16.c
     fonts/ui_font_Roboto_Reg_18.c
     fonts/ui_font_Roboto_Reg_28.c
     fonts/ui_font_Roboto_Reg_48.c)
