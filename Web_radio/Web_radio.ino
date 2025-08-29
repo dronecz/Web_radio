@@ -23,11 +23,23 @@ Sketch settings for ESP32-S3 Dev module:
  https://www.dovora.com/resources/weather-icons/
  
  */
+
+//select size of the LCD
+#define small //320x240px
+//#define large //480x320px
+
 #include <Arduino_GFX_Library.h>
 #include "arduino_secrets.h"
 #include "Audio.h"
 #include <lvgl.h>
-#include "src/ui/ui.h"
+
+#ifdef small
+#include "src/ui/small/ui.h"
+#endif
+#ifdef large
+#include "src/ui/large/ui.h"
+#endif
+
 #include <WiFi.h>
 #include "time.h"
 #include "sntp.h"
@@ -53,8 +65,15 @@ Arduino_GFX *gfx = create_default_Arduino_GFX();
 /* More data bus class: https://github.com/moononournation/Arduino_GFX/wiki/Data-Bus-Class */
 Arduino_DataBus *bus = new Arduino_ESP32SPI(17 /* DC */, 15 /* CS */, 12 /* SCK */, 11 /* MOSI */, GFX_NOT_DEFINED /* MISO */, FSPI /* spi_num */);
 
+#ifdef small
+/* More display class: https://github.com/moononournation/Arduino_GFX/wiki/Display-Class */
+Arduino_GFX *gfx = new Arduino_ILI9341(bus, 18 /* RST */, 1 /* rotation */);
+#endif
+
+#ifdef large
 /* More display class: https://github.com/moononournation/Arduino_GFX/wiki/Display-Class */
 Arduino_GFX *gfx = new Arduino_ST7796(bus, 18 /* RST */, 1 /* rotation */);
+#endif
 
 #endif /* !defined(DISPLAY_DEV_KIT) */
 /*******************************************************************************
@@ -70,8 +89,15 @@ lv_color_t *disp_draw_buf;
 
 #include "src\FFT.h"
 // --- LVGL canvas ---
+#ifdef small
+#define CANVAS_WIDTH 185
+#define CANVAS_HEIGHT 40
+#endif
+#ifdef large
 #define CANVAS_WIDTH 385
 #define CANVAS_HEIGHT 40
+#endif
+
 static lv_obj_t *canvas;
 static lv_color_t *canvas_buf;
 
@@ -148,7 +174,7 @@ void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
   uint32_t w = lv_area_get_width(area);
   uint32_t h = lv_area_get_height(area);
 
-  gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)px_map, w, h);
+gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)px_map, w, h);
 #endif  // #ifndef DIRECT_MODE
 
   /*Call it to tell LVGL you are ready*/
