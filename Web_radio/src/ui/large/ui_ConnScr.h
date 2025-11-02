@@ -3,17 +3,23 @@
 // LVGL version: 9.1.0
 // Project name: Web_radio_large
 
-#ifndef _UI_EVENTS_H
-#define _UI_EVENTS_H
+#ifndef UI_CONNSCR_H
+#define UI_CONNSCR_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void ScreenSolver(lv_event_t * e);
+// SCREEN: ui_ConnScr
+extern void ui_ConnScr_screen_init(void);
+extern void ui_ConnScr_screen_destroy(void);
+extern lv_obj_t * ui_ConnScr;
+extern lv_obj_t * ui_LblbConnecting;
+// CUSTOM VARIABLES
 
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif
 
 #endif
+

@@ -1,4 +1,7 @@
-SET(SOURCES ui_Screen1.c
+SET(SOURCES ui_BootScr.c
+    ui_MainScr.c
+    ui_WmScrn.c
+    ui_ConnScr.c
     ui.c
     ui_comp_hook.c
     ui_helpers.c

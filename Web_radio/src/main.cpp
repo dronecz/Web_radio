@@ -25,19 +25,22 @@ Sketch settings for ESP32-S3 Dev module:
  */
 
 //select size of the LCD
-#define small //320x240px
+//#define small //320x240px
 //#define large //480x320px
 
+#include <Arduino.h>
 #include <Arduino_GFX_Library.h>
 #include "arduino_secrets.h"
 #include "Audio.h"
 #include <lvgl.h>
+//#include <esp32-hal-time.c>
+//#include <esp32-hal-periman.h>
 
 #ifdef small
-#include "src/ui/small/ui.h"
+#include "ui/small/ui.h"
 #endif
 #ifdef large
-#include "src/ui/large/ui.h"
+#include "ui/large/ui.h"
 #endif
 
 #include <WiFi.h>
@@ -87,7 +90,7 @@ uint32_t bufSize;
 lv_display_t *disp;
 lv_color_t *disp_draw_buf;
 
-#include "src\FFT.h"
+#include "FFT.h"
 // --- LVGL canvas ---
 #ifdef small
 #define CANVAS_WIDTH 185
@@ -226,6 +229,12 @@ void processButtons() {
   }
 }
 
+void connectToStation(int stationIndex){
+  audio.stopSong();
+  audio.connecttohost(stations[stationIndex]);
+  Serial.println("Connected to: " + String(stations[stationIndex]));
+}
+
 void btn_event_handler(lv_event_t *e) {
   lv_obj_t *btn = (lv_obj_t *)lv_event_get_target(e);  // add (lv_obj_t*) to fix "invalid conversion from 'void*' to 'lv_obj_t*" error
   lv_event_code_t code = lv_event_get_code(e);
@@ -284,11 +293,7 @@ void readVolumeValue() {
     Serial.println(volume);
   }
 }
-void connectToStation(int stationIndex){
-  audio.stopSong();
-  audio.connecttohost(stations[stationIndex]);
-  Serial.println("Connected to: " + String(stations[stationIndex]));
-}
+
 
 void countTime() {
   unsigned long currMillisCountTime = millis();
@@ -428,55 +433,17 @@ void timeavailable(struct timeval *t) {
   printLocalTime();
 }
 
+void ScreenSolver(lv_event_t *e){
+  
+}
+
 // Print station info
-void audio_info(const char *info) {
-  Serial.print("info        ");
-  Serial.println(info);
-}
-void audio_id3data(const char *info) {  //id3 metadata
-  Serial.print("id3data     ");
-  Serial.println(info);
-}
-void audio_eof_mp3(const char *info) {  //end of file
-  Serial.print("eof_mp3     ");
-  Serial.println(info);
-}
-void audio_showstation(const char *info) {
-  Serial.print("station     ");
-  Serial.println(info);
-  lv_label_set_text(ui_LblStation, info);
-}
-void audio_showstreaminfo(const char *info) {
-  Serial.print("streaminfo  ");
-  Serial.println(info);
-}
-void audio_showstreamtitle(const char *info) {
-  Serial.print("streamtitle ");
-  Serial.println(info);
-  lv_label_set_text(ui_LblCurPlaying, info);
-}
-void audio_bitrate(const char *info) {
-  Serial.print("bitrate     ");
-  Serial.println(info);
-}
-void audio_commercial(const char *info) {  //duration in sec
-  Serial.print("commercial  ");
-  Serial.println(info);
-}
-void audio_icyurl(const char *info) {  //homepage
-  Serial.print("icyurl      ");
-  Serial.println(info);
-}
-void audio_lasthost(const char *info) {  //stream URL played
-  Serial.print("lasthost    ");
-  Serial.println(info);
-}
-void audio_eof_speech(const char *info) {
-  Serial.print("eof_speech  ");
-  Serial.println(info);
+void my_audio_info(Audio::msg_t m) {
+    Serial.printf("%s: %s\n", m.s, m.msg);
 }
 
 void setup() {
+  Audio::audio_info_callback = my_audio_info;
   Serial.begin(115200);
   // Serial.setDebugOutput(true);
   // while(!Serial);
