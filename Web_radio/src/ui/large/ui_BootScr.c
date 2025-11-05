@@ -8,15 +8,8 @@
 lv_obj_t * ui_BootScr = NULL;
 lv_obj_t * ui_LblPrjName = NULL;
 lv_obj_t * ui_LblVersion = NULL;
+lv_obj_t * ui_LblConnection = NULL;
 // event funtions
-void ui_event_BootScr(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-
-    if(event_code == LV_EVENT_SCREEN_LOADED) {
-        ScreenSolver(e);
-    }
-}
 
 // build funtions
 
@@ -24,6 +17,7 @@ void ui_BootScr_screen_init(void)
 {
     ui_BootScr = lv_obj_create(NULL);
     lv_obj_remove_flag(ui_BootScr, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_add_event_cb(ui_BootScr, scr_unloaded_delete_cb, LV_EVENT_SCREEN_UNLOADED, ui_BootScr_screen_destroy);
 
     ui_LblPrjName = lv_label_create(ui_BootScr);
     lv_obj_set_width(ui_LblPrjName, LV_SIZE_CONTENT);   /// 1
@@ -38,12 +32,20 @@ void ui_BootScr_screen_init(void)
     lv_obj_set_width(ui_LblVersion, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_LblVersion, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_LblVersion, 0);
-    lv_obj_set_y(ui_LblVersion, 90);
+    lv_obj_set_y(ui_LblVersion, 20);
     lv_obj_set_align(ui_LblVersion, LV_ALIGN_CENTER);
     lv_label_set_text(ui_LblVersion, "V 1.0.0");
     lv_obj_set_style_text_font(ui_LblVersion, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    lv_obj_add_event_cb(ui_BootScr, ui_event_BootScr, LV_EVENT_ALL, NULL);
+    ui_LblConnection = lv_label_create(ui_BootScr);
+    lv_obj_set_width(ui_LblConnection, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_LblConnection, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_x(ui_LblConnection, 0);
+    lv_obj_set_y(ui_LblConnection, 88);
+    lv_obj_set_align(ui_LblConnection, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_LblConnection, "text");
+    lv_obj_set_style_text_align(ui_LblConnection, LV_TEXT_ALIGN_AUTO, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_LblConnection, &ui_font_Roboto_Reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
 }
 
@@ -55,5 +57,6 @@ void ui_BootScr_screen_destroy(void)
     ui_BootScr = NULL;
     ui_LblPrjName = NULL;
     ui_LblVersion = NULL;
+    ui_LblConnection = NULL;
 
 }

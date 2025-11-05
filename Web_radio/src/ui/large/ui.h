@@ -30,7 +30,6 @@ extern "C" {
 #include "ui_BootScr.h"
 #include "ui_MainScr.h"
 #include "ui_WmScrn.h"
-#include "ui_ConnScr.h"
 
 ///////////////////// VARIABLES ////////////////////
 

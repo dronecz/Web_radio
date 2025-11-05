@@ -58,8 +58,6 @@ void ui_init(void)
     lv_disp_set_theme(dispp, theme);
     ui_BootScr_screen_init();
     ui_MainScr_screen_init();
-    ui_WmScrn_screen_init();
-    ui_ConnScr_screen_init();
     ui____initial_actions0 = lv_obj_create(NULL);
     lv_disp_load_scr(ui_BootScr);
 }
@@ -68,6 +66,4 @@ void ui_destroy(void)
 {
     ui_BootScr_screen_destroy();
     ui_MainScr_screen_destroy();
-    ui_WmScrn_screen_destroy();
-    ui_ConnScr_screen_destroy();
 }

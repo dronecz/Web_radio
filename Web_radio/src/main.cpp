@@ -55,7 +55,7 @@ const int daylightOffset_sec = 3600;
 //#define DIRECT_MODE  // Uncomment to enable full frame buffer
 
 // Connections ESP32S3 <-> Amplifier
-#define I2S_DOUT 10
+#define I2S_DOUT 15
 #define I2S_BCLK 3
 #define I2S_LRC 1
 Audio audio;
@@ -66,7 +66,7 @@ Arduino_GFX *gfx = create_default_Arduino_GFX();
 #else /* !defined(DISPLAY_DEV_KIT) */
 
 /* More data bus class: https://github.com/moononournation/Arduino_GFX/wiki/Data-Bus-Class */
-Arduino_DataBus *bus = new Arduino_ESP32SPI(17 /* DC */, 15 /* CS */, 12 /* SCK */, 11 /* MOSI */, GFX_NOT_DEFINED /* MISO */, FSPI /* spi_num */);
+Arduino_DataBus *bus = new Arduino_ESP32SPI(17 /* DC */, 10 /* CS */, 12 /* SCK */, 11 /* MOSI */, GFX_NOT_DEFINED /* MISO */, FSPI /* spi_num */);
 
 #ifdef small
 /* More display class: https://github.com/moononournation/Arduino_GFX/wiki/Display-Class */
