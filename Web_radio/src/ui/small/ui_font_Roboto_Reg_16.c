@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 16 px
  * Bpp: 1
- * Opts: --bpp 1 --size 16 --font C:/Users/dronecz/Documents/GitHub/Web_radio/SquareLine Studio Project/assets/Roboto-Regular.ttf -o C:/Users/dronecz/Documents/GitHub/Web_radio/SquareLine Studio Project/assets\ui_font_Roboto_Reg_16.c --format lvgl -r 0x20-0xff
+ * Opts: --bpp 1 --size 16 --font C:/Users/dronecz/Documents/GitHub/Web_radio/SLS_project_small/assets/Roboto-Regular.ttf -o C:/Users/dronecz/Documents/GitHub/Web_radio/SLS_project_small/assets\ui_font_Roboto_Reg_16.c --format lvgl -r 0x20-0xff
  ******************************************************************************/
 
 #include "ui.h"

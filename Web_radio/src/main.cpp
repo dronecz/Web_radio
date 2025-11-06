@@ -45,7 +45,7 @@ Sketch settings for ESP32-S3 Dev module:
 
 #include <WiFi.h>
 #include "time.h"
-#include "sntp.h"
+#include "esp_sntp.h"
 #include "stations.h"
 
 const char *ntpServer = "pool.ntp.org";
@@ -70,7 +70,7 @@ Arduino_DataBus *bus = new Arduino_ESP32SPI(17 /* DC */, 10 /* CS */, 12 /* SCK 
 
 #ifdef small
 /* More display class: https://github.com/moononournation/Arduino_GFX/wiki/Display-Class */
-Arduino_GFX *gfx = new Arduino_ILI9341(bus, 18 /* RST */, 1 /* rotation */);
+Arduino_GFX *gfx = new Arduino_ST7789(bus, 18 /* RST */, 1 /* rotation */, true /* IPS */);
 #endif
 
 #ifdef large
@@ -93,8 +93,8 @@ lv_color_t *disp_draw_buf;
 #include "FFT.h"
 // --- LVGL canvas ---
 #ifdef small
-#define CANVAS_WIDTH 185
-#define CANVAS_HEIGHT 40
+#define CANVAS_WIDTH 285
+#define CANVAS_HEIGHT 30
 #endif
 #ifdef large
 #define CANVAS_WIDTH 385
@@ -302,13 +302,13 @@ void countTime() {
     targetCountTime += 1000;
     sec++;  // Advance second
     if (sec >= 60) {
-      sec = 0;
       minutes++;  // Advance minutes
+      sec = 0;
       sprintf(numberString, "%02d", minutes);
       lv_label_set_text(ui_LblMin, numberString);
       if (minutes >= 60) {
-        minutes = 0;
         hour++;  // Advance hour
+        minutes = 0;
         if (hour >= 24) {
           hour = 0;
         }
@@ -391,9 +391,7 @@ void draw_fft_level_meter_lvgl(lv_obj_t *canvas) {
 }
 
 
-void audio_process_i2s(int16_t *outBuff, uint16_t validSamples, uint8_t bitsPerSample, uint8_t channels, bool *continueI2S) {
-  if (bitsPerSample != 16 || channels != 2) return;
-
+void audio_process_i2s(int16_t* outBuff, int32_t validSamples, bool *continueI2S){
   static float previous_sample = 0;
   static constexpr float alpha = 0.2f;
   static constexpr float gain = 1.5f;
@@ -433,20 +431,22 @@ void timeavailable(struct timeval *t) {
   printLocalTime();
 }
 
-void ScreenSolver(lv_event_t *e){
-  
-}
-
 // Print station info
 void my_audio_info(Audio::msg_t m) {
-    Serial.printf("%s: %s\n", m.s, m.msg);
+  //Serial.printf("%s: %s\n", m.s, m.msg);
+  switch(m.e){
+    case Audio::evt_name:           Serial.printf("station name: %s\n", m.msg); 
+    lv_label_set_text(ui_LblStation, m.msg);
+    break;
+    case Audio::evt_streamtitle:    Serial.printf("stream title: %s\n", m.msg);
+    lv_label_set_text(ui_LblCurPlaying, m.msg); 
+    break;
+  }
 }
 
 void setup() {
   Audio::audio_info_callback = my_audio_info;
   Serial.begin(115200);
-  // Serial.setDebugOutput(true);
-  // while(!Serial);
 
   initButtons();
 

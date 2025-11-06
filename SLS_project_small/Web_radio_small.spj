@@ -52,7 +52,7 @@
                     "strtype": "OBJECT/Position",
                     "intarray": [
                       -40,
-                      -10
+                      -15
                     ],
                     "InheritedType": 7
                   },
@@ -204,7 +204,7 @@
                     "strtype": "OBJECT/Position",
                     "intarray": [
                       40,
-                      -10
+                      -15
                     ],
                     "InheritedType": 7
                   },
@@ -356,7 +356,7 @@
                     "strtype": "OBJECT/Position",
                     "intarray": [
                       0,
-                      -15
+                      -20
                     ],
                     "InheritedType": 7
                   },
@@ -508,7 +508,7 @@
                     "strtype": "OBJECT/Position",
                     "intarray": [
                       0,
-                      20
+                      25
                     ],
                     "InheritedType": 7
                   },
@@ -796,7 +796,7 @@
                     "strtype": "OBJECT/Position",
                     "intarray": [
                       0,
-                      -15
+                      -20
                     ],
                     "InheritedType": 7
                   },
@@ -821,12 +821,6 @@
                     "flags": 1048576,
                     "strtype": "OBJECT/Flags",
                     "InheritedType": 1
-                  },
-                  {
-                    "nid": 100,
-                    "strtype": "OBJECT/Hidden",
-                    "strval": "True",
-                    "InheritedType": 2
                   },
                   {
                     "nid": 225,
@@ -1122,7 +1116,7 @@
                     "strtype": "OBJECT/Position",
                     "intarray": [
                       0,
-                      20
+                      25
                     ],
                     "InheritedType": 7
                   },
@@ -1518,9 +1512,9 @@
                                 "nid": 20520,
                                 "strtype": "_style/Bg_Color",
                                 "intarray": [
-                                  22,
-                                  102,
-                                  0,
+                                  44,
+                                  198,
+                                  1,
                                   255
                                 ],
                                 "InheritedType": 7
@@ -1915,9 +1909,9 @@
                                 "nid": 20520,
                                 "strtype": "_style/Bg_Color",
                                 "intarray": [
-                                  22,
-                                  102,
-                                  0,
+                                  44,
+                                  198,
+                                  1,
                                   255
                                 ],
                                 "InheritedType": 7
@@ -2312,9 +2306,9 @@
                                 "nid": 20520,
                                 "strtype": "_style/Bg_Color",
                                 "intarray": [
-                                  22,
-                                  102,
-                                  0,
+                                  44,
+                                  198,
+                                  1,
                                   255
                                 ],
                                 "InheritedType": 7
@@ -2709,9 +2703,9 @@
                                 "nid": 20520,
                                 "strtype": "_style/Bg_Color",
                                 "intarray": [
-                                  22,
-                                  102,
-                                  0,
+                                  44,
+                                  198,
+                                  1,
                                   255
                                 ],
                                 "InheritedType": 7
@@ -3106,9 +3100,9 @@
                                 "nid": 20520,
                                 "strtype": "_style/Bg_Color",
                                 "intarray": [
-                                  22,
-                                  102,
-                                  0,
+                                  44,
+                                  198,
+                                  1,
                                   255
                                 ],
                                 "InheritedType": 7
@@ -3799,7 +3793,6 @@
                   },
                   {
                     "nid": 1010,
-                    "flags": 1048576,
                     "strtype": "LABEL/Label",
                     "InheritedType": 1
                   },
@@ -4172,7 +4165,7 @@
                 "strtype": "OBJECT/Size",
                 "intarray": [
                   2,
-                  130
+                  80
                 ],
                 "InheritedType": 7
               },
@@ -4309,8 +4302,8 @@
                 "flags": 17,
                 "strtype": "OBJECT/Position",
                 "intarray": [
-                  320,
-                  31
+                  5,
+                  0
                 ],
                 "InheritedType": 7
               },
@@ -4320,7 +4313,7 @@
                 "strtype": "OBJECT/Size",
                 "intarray": [
                   320,
-                  34
+                  20
                 ],
                 "InheritedType": 7
               },
@@ -4395,7 +4388,6 @@
               {
                 "nid": 1040,
                 "strtype": "SLIDER/Value",
-                "integer": 10,
                 "InheritedType": 6
               },
               {
@@ -4405,6 +4397,70 @@
               },
               {
                 "part": "lv.PART.MAIN",
+                "childs": [
+                  {
+                    "nid": 10000,
+                    "strtype": "_style/StyleState",
+                    "strval": "DEFAULT",
+                    "childs": [
+                      {
+                        "nid": 10510,
+                        "strtype": "_style/Bg_Radius",
+                        "InheritedType": 6
+                      },
+                      {
+                        "nid": 10520,
+                        "strtype": "_style/Bg_Color",
+                        "intarray": [
+                          0,
+                          0,
+                          0,
+                          255
+                        ],
+                        "InheritedType": 7
+                      },
+                      {
+                        "nid": 10540,
+                        "strtype": "_style/Bg_gradient_params",
+                        "intarray": [
+                          0,
+                          255
+                        ],
+                        "InheritedType": 7
+                      },
+                      {
+                        "nid": 10720,
+                        "strtype": "_style/Border width",
+                        "InheritedType": 6
+                      },
+                      {
+                        "nid": 11110,
+                        "strtype": "_style/Padding",
+                        "intarray": [
+                          2,
+                          2,
+                          0,
+                          0
+                        ],
+                        "InheritedType": 7
+                      },
+                      {
+                        "nid": 10050,
+                        "strtype": "_style/Transform_scale",
+                        "integer": 245,
+                        "InheritedType": 6
+                      }
+                    ],
+                    "InheritedType": 1
+                  }
+                ],
+                "nid": 1060,
+                "strtype": "SLIDER/Style_main",
+                "strval": "lv.PART.MAIN, Rectangle, Pad, Transform",
+                "InheritedType": 11
+              },
+              {
+                "part": "lv.PART.INDICATOR",
                 "childs": [
                   {
                     "nid": 10000,
@@ -4441,54 +4497,6 @@
                         "strtype": "_style/Bg_Image",
                         "strval": "assets/indicator_hor_small.png",
                         "InheritedType": 5
-                      },
-                      {
-                        "nid": 10040,
-                        "strtype": "_style/Transform_rotation",
-                        "integer": 1800,
-                        "InheritedType": 6
-                      }
-                    ],
-                    "InheritedType": 1
-                  }
-                ],
-                "nid": 1060,
-                "strtype": "SLIDER/Style_main",
-                "strval": "lv.PART.MAIN, Rectangle, Pad, Transform",
-                "InheritedType": 11
-              },
-              {
-                "part": "lv.PART.INDICATOR",
-                "childs": [
-                  {
-                    "nid": 10000,
-                    "strtype": "_style/StyleState",
-                    "strval": "DEFAULT",
-                    "childs": [
-                      {
-                        "nid": 10510,
-                        "strtype": "_style/Bg_Radius",
-                        "InheritedType": 6
-                      },
-                      {
-                        "nid": 10520,
-                        "strtype": "_style/Bg_Color",
-                        "intarray": [
-                          0,
-                          0,
-                          0,
-                          255
-                        ],
-                        "InheritedType": 7
-                      },
-                      {
-                        "nid": 10540,
-                        "strtype": "_style/Bg_gradient_params",
-                        "intarray": [
-                          0,
-                          255
-                        ],
-                        "InheritedType": 7
                       }
                     ],
                     "InheritedType": 1
@@ -4892,7 +4900,7 @@
     "description": "",
     "board": "Arduino with TFT_eSPI",
     "board_version": "v2.0.0",
-    "editor_version": "1.5.3",
+    "editor_version": "1.5.4",
     "image": "",
     "export_temp_image": false,
     "force_export_images": false,
@@ -4903,8 +4911,6 @@
     "theme_dark": true,
     "theme_color1": 5,
     "theme_color2": 0,
-    "uiExportFolderPath": "C:\\Users\\dronecz\\Documents\\GitHub\\Web_radio\\Web_radio\\src\\ui\\small",
-    "projectExportFolderPath": "C:\\Users\\dronecz\\Documents\\GitHub\\Web_radio\\Web_radio",
     "custom_variable_prefix": "uic",
     "backup_cnt": 12,
     "autosave_cnt": 0,
@@ -4913,14 +4919,6 @@
     "callfuncsexport": "C_FILE",
     "imageexport": "SOURCE",
     "lvgl_include_path": "",
-    "drive_stdio": "-",
-    "drive_stdio_path": "",
-    "drive_posix": "-",
-    "drive_posix_path": "",
-    "drive_win32": "-",
-    "drive_win32_path": "",
-    "drive_fatfs": "-",
-    "drive_fatfs_path": "",
     "naming": "Name",
     "naming_force_lowercase": false,
     "naming_add_subcomponent": false,
