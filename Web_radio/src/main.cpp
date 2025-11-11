@@ -24,17 +24,11 @@ Sketch settings for ESP32-S3 Dev module:
  
  */
 
-//select size of the LCD
-//#define small //320x240px
-//#define large //480x320px
-
 #include <Arduino.h>
 #include <Arduino_GFX_Library.h>
 #include "arduino_secrets.h"
 #include "Audio.h"
 #include <lvgl.h>
-//#include <esp32-hal-time.c>
-//#include <esp32-hal-periman.h>
 
 #ifdef small
 #include "ui/small/ui.h"
@@ -55,9 +49,9 @@ const int daylightOffset_sec = 3600;
 //#define DIRECT_MODE  // Uncomment to enable full frame buffer
 
 // Connections ESP32S3 <-> Amplifier
-#define I2S_DOUT 15
-#define I2S_BCLK 3
-#define I2S_LRC 1
+#define I2S_DOUT 4
+#define I2S_BCLK 5
+#define I2S_LRC 6
 Audio audio;
 
 /* More dev device declaration: https://github.com/moononournation/Arduino_GFX/wiki/Dev-Device-Declaration */
@@ -131,7 +125,7 @@ int year, month, day, hour, minutes, sec = 0;
 int brightness = 32;  // initial brightness of the screen 0 - 255
 
 const int buttonCount = 5;
-const int buttonPins[buttonCount] = { 4, 5, 6, 7, 16 };
+const int buttonPins[buttonCount] = { 40, 41, 42, 43, 44 };
 
 bool currentStates[buttonCount];
 bool previousStates[buttonCount];
@@ -285,15 +279,17 @@ void readVolumeValue() {
   int volume = map(raw, 0, 4095, 0, 21);
 
   if (abs(volume - lastSliderValue) >= changeTreshold) {
+    lv_obj_set_style_opa(ui_SldrVolume, LV_OPA_100, 0);
     lv_slider_set_value(ui_SldrVolume, volume, LV_ANIM_OFF);
     lastSliderValue = volume;
     audio.setVolume(volume);
 
     Serial.print("Aktualizace slideru na: ");
     Serial.println(volume);
+    lv_obj_fade_out(ui_SldrVolume, 1000, 1000);
   }
+  
 }
-
 
 void countTime() {
   unsigned long currMillisCountTime = millis();

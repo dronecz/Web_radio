@@ -337,7 +337,7 @@ void ui_Screen1_screen_init(void)
     lv_obj_set_y(ui_LblCurPlaying, 2);
     lv_obj_set_align(ui_LblCurPlaying, LV_ALIGN_CENTER);
     lv_label_set_long_mode(ui_LblCurPlaying, LV_LABEL_LONG_SCROLL_CIRCULAR);
-    lv_label_set_text(ui_LblCurPlaying, "Česká státní hymna");
+    lv_label_set_text(ui_LblCurPlaying, "Song title");
     lv_obj_remove_flag(ui_LblCurPlaying,
                        LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE |
                        LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_CHAIN);     /// Flags
@@ -364,7 +364,7 @@ void ui_Screen1_screen_init(void)
 
     ui_SldrVolume = lv_slider_create(ui_Screen1);
     lv_slider_set_range(ui_SldrVolume, 0, 21);
-    lv_slider_set_value(ui_SldrVolume, 0, LV_ANIM_OFF);
+    lv_slider_set_value(ui_SldrVolume, 21, LV_ANIM_OFF);
     if(lv_slider_get_mode(ui_SldrVolume) == LV_SLIDER_MODE_RANGE) lv_slider_set_left_value(ui_SldrVolume, 0, LV_ANIM_OFF);
     lv_obj_set_width(ui_SldrVolume, 320);
     lv_obj_set_height(ui_SldrVolume, 20);
@@ -376,7 +376,6 @@ void ui_Screen1_screen_init(void)
     lv_obj_set_style_bg_opa(ui_SldrVolume, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_main_stop(ui_SldrVolume, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_grad_stop(ui_SldrVolume, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui_SldrVolume, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_left(ui_SldrVolume, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_right(ui_SldrVolume, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_top(ui_SldrVolume, 0, LV_PART_MAIN | LV_STATE_DEFAULT);

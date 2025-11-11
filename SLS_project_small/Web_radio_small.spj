@@ -3547,6 +3547,7 @@
                   },
                   {
                     "nid": 90,
+                    "flags": 1048576,
                     "strtype": "OBJECT/Flags",
                     "InheritedType": 1
                   },
@@ -3805,7 +3806,7 @@
                   {
                     "nid": 1030,
                     "strtype": "LABEL/Text",
-                    "strval": "Česká státní hymna",
+                    "strval": "Song title",
                     "InheritedType": 10
                   },
                   {
@@ -4388,6 +4389,7 @@
               {
                 "nid": 1040,
                 "strtype": "SLIDER/Value",
+                "integer": 21,
                 "InheritedType": 6
               },
               {
@@ -4427,11 +4429,6 @@
                           255
                         ],
                         "InheritedType": 7
-                      },
-                      {
-                        "nid": 10720,
-                        "strtype": "_style/Border width",
-                        "InheritedType": 6
                       },
                       {
                         "nid": 11110,
@@ -4536,7 +4533,8 @@
                 "InheritedType": 11
               }
             ],
-            "saved_objtypeKey": "SLIDER"
+            "saved_objtypeKey": "SLIDER",
+            "tree_closed": true
           }
         ],
         "isPage": true,
@@ -4693,12 +4691,12 @@
           "KeyFrames": [
             {
               "Value": 255,
-              "Time": 0.0,
+              "Time": 1000.0,
               "InheritedType": 1
             },
             {
               "Value": 0,
-              "Time": 1000.0,
+              "Time": 2000.0,
               "InheritedType": 1
             }
           ],
@@ -4754,6 +4752,7 @@
             {
               "nid": 1000494,
               "strtype": "PROPERTYANIMATION/Delay",
+              "integer": 1000,
               "InheritedType": 6
             },
             {
@@ -4771,7 +4770,7 @@
             {
               "nid": 1000497,
               "strtype": "PROPERTYANIMATION/FullAnimationDuration",
-              "integer": 1000,
+              "integer": 2000,
               "InheritedType": 6
             },
             {
@@ -4873,7 +4872,7 @@
         {
           "nid": 1000486,
           "strtype": "ELOANIMATION/TestTarget",
-          "strval": "GUID18719129-383116S5134101",
+          "strval": "GUID59445134-401616S9484140",
           "InheritedType": 10
         },
         {
