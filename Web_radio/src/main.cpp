@@ -21,6 +21,8 @@ Sketch settings for ESP32-S3 Dev module:
 
  https://randomnerdtutorials.com/esp32-tft-lvgl-weather-station/
  https://www.dovora.com/resources/weather-icons/
+
+ https://github.com/pangcrd/LVGL_Bassic-tutorial/tree/main/BassicButton
  
  */
 
@@ -28,6 +30,7 @@ Sketch settings for ESP32-S3 Dev module:
 #include <Arduino_GFX_Library.h>
 #include "arduino_secrets.h"
 #include "Audio.h"
+#include "EncoderRead.h"
 #include <lvgl.h>
 
 #ifdef small
@@ -41,6 +44,8 @@ Sketch settings for ESP32-S3 Dev module:
 #include "time.h"
 #include "esp_sntp.h"
 #include "stations.h"
+
+EncoderRead encoder(33, 32, 34); //PinA, PinB,buttons (PinA and PinB must be connected to interrupt-supported pins).
 
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;
@@ -144,6 +149,9 @@ int lastSliderValue = -1;      // Interní proměnné pro sledování stavu
 const int numOfStations = sizeof(stations) / sizeof(stations[0]);
 int currentStation = 0;
 
+//declare the function to create a group for the rotary encoder
+lv_group_t *group1 = lv_group_create();
+
 lv_obj_t *lvglButtons[buttonCount];
 
 // Ukazatele na LVGL tlačítka (musí být deklarovány někde jinde)
@@ -176,6 +184,17 @@ gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)px_map, w, h);
 
   /*Call it to tell LVGL you are ready*/
   lv_disp_flush_ready(disp);
+}
+
+void encoder_with_keys_read(lv_indev_t * indev, lv_indev_data_t * data){
+  // if(key_pressed()) {
+  //     /* Get the last pressed or released key
+  //      * use LV_KEY_ENTER for encoder press */
+  //     data->key = my_last_key();
+  //     data->state = LV_INDEV_STATE_PRESSED;
+  // } else {
+  //     data->state = LV_INDEV_STATE_RELEASED;
+  // }
 }
 
 void initButtons() {
@@ -455,6 +474,8 @@ void setup() {
   // Volume (0-100)
   audio.setVolume(7);
 
+  encoder.begin();
+
 #ifdef GFX_EXTRA_PRE_INIT
   GFX_EXTRA_PRE_INIT();
 #endif
@@ -572,6 +593,12 @@ void setup() {
     lv_display_set_buffers(disp, disp_draw_buf, NULL, bufSize * 2, LV_DISPLAY_RENDER_MODE_PARTIAL);
 #endif
   }
+
+  //Initialize the Rotary Encoder input device.
+  lv_indev_t * indev = lv_indev_create();
+  lv_indev_set_type(indev, LV_INDEV_TYPE_ENCODER);
+  lv_indev_set_read_cb(indev, encoder_with_keys_read);
+  lv_indev_set_group(indev, group1);
 
   ui_init();
 
