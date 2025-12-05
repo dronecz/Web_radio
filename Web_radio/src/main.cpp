@@ -45,7 +45,7 @@ Sketch settings for ESP32-S3 Dev module:
 #include "esp_sntp.h"
 #include "stations.h"
 
-EncoderRead encoder(33, 32, 34); //PinA, PinB,buttons (PinA and PinB must be connected to interrupt-supported pins).
+EncoderRead encoder(21, 46, 14); //PinA, PinB,buttons (PinA and PinB must be connected to interrupt-supported pins).
 
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;
@@ -129,6 +129,8 @@ int year, month, day, hour, minutes, sec = 0;
 
 int brightness = 32;  // initial brightness of the screen 0 - 255
 
+byte playerMode = -1; // 0 - radio, 1 = MP3 player, 2 = streaming player
+
 const int buttonCount = 5;
 const int buttonPins[buttonCount] = { 40, 41, 42, 43, 44 };
 
@@ -139,7 +141,7 @@ const unsigned long debounceDelay = 50;
 
 int activeButton = -1;
 
-int volumePin = 14;
+int volumePin = 3;
 const int samples = 10;
 unsigned long lastVolumeCheck = 0;
 const unsigned long volumeCheckInterval = 250;
@@ -149,8 +151,7 @@ int lastSliderValue = -1;      // Interní proměnné pro sledování stavu
 const int numOfStations = sizeof(stations) / sizeof(stations[0]);
 int currentStation = 0;
 
-//declare the function to create a group for the rotary encoder
-lv_group_t *group1 = lv_group_create();
+lv_indev_t * indev_encoder;
 
 lv_obj_t *lvglButtons[buttonCount];
 
@@ -186,15 +187,17 @@ gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)px_map, w, h);
   lv_disp_flush_ready(disp);
 }
 
-void encoder_with_keys_read(lv_indev_t * indev, lv_indev_data_t * data){
-  // if(key_pressed()) {
-  //     /* Get the last pressed or released key
-  //      * use LV_KEY_ENTER for encoder press */
-  //     data->key = my_last_key();
-  //     data->state = LV_INDEV_STATE_PRESSED;
-  // } else {
-  //     data->state = LV_INDEV_STATE_RELEASED;
-  // }
+void encoder_read(lv_indev_t * indev, lv_indev_data_t * data){
+
+      static int32_t last_counter = 0;
+
+    int32_t counter = encoder.getCounter();
+    bool btn_state = encoder.encBtn();
+
+  data->enc_diff = counter - last_counter;  
+
+  if(btn_state) data->state = LV_INDEV_STATE_PRESSED;
+  else data->state = LV_INDEV_STATE_RELEASED;
 }
 
 void initButtons() {
@@ -240,6 +243,31 @@ void processButtons() {
 
     previousStates[i] = reading;
   }
+}
+
+void processEncoder(){
+if (playerMode == 0){
+  byte nevim = 0;
+  if(nevim != 1){ 
+  lv_group_t * modeGroup = lv_group_create();
+  lv_obj_t *focused_obj = lv_group_get_focused(modeGroup);
+  lv_indev_set_group(indev_encoder, modeGroup);
+
+      if (encoder.encBtn()) {//Handle the objects on the screen when the rotary encoder button is pressed.
+        Serial.println("Encoder button pressed!");
+            // if(focused_obj == ui_Button1) {
+            //     lv_event_send(focused_obj, LV_EVENT_PRESSED, NULL);//Send the button press event for processing.
+            //     lv_obj_clear_state(focused_obj, LV_STATE_PRESSED); //Set effect when click button
+            //     lv_obj_add_state(focused_obj, LV_STATE_DEFAULT); 
+            //     Serial.println("Button 1 pressed on Screen 2");
+            // } else if (focused_obj == ui_Button2) {
+            //     lv_event_send(focused_obj, LV_EVENT_PRESSED, NULL);
+            //     lv_obj_clear_state(focused_obj, LV_STATE_PRESSED);
+            //     lv_obj_add_state(focused_obj, LV_STATE_DEFAULT);
+            //     Serial.println("Button 2 pressed on Screen 2"); 
+            // }
+        }
+}}
 }
 
 void connectToStation(int stationIndex){
@@ -594,15 +622,17 @@ void setup() {
 #endif
   }
 
-  //Initialize the Rotary Encoder input device.
-  lv_indev_t * indev = lv_indev_create();
-  lv_indev_set_type(indev, LV_INDEV_TYPE_ENCODER);
-  lv_indev_set_read_cb(indev, encoder_with_keys_read);
-  lv_indev_set_group(indev, group1);
+  //declare the function to create a group for the rotary encoder
+  
 
+  //Initialize the Rotary Encoder input device.
+  indev_encoder = lv_indev_create();
+  lv_indev_set_type(indev_encoder, LV_INDEV_TYPE_ENCODER);
+  lv_indev_set_read_cb(indev_encoder, encoder_read);
+  
   ui_init();
 
-  // // Mapování LVGL tlačítek na indexy
+  //mapping of hw buttons to LVGL buttons
   lvglButtons[0] = ui_Button1;
   lvglButtons[1] = ui_Button2;
   lvglButtons[2] = ui_Button3;
@@ -676,6 +706,7 @@ void loop() {
   lv_task_handler(); /* let the GUI do its work */
   processButtons();
   countTime();
+  processEncoder();
 
 #ifdef DIRECT_MODE
 #if defined(CANVAS) || defined(RGB_PANEL)

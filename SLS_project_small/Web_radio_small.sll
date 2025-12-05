@@ -25,7 +25,7 @@
     "custom_variable_prefix": "uic",
     "backup_cnt": 13,
     "autosave_cnt": 0,
-    "group_color_cnt": 0,
+    "group_color_cnt": 2,
     "lvgl_version": "9.1.0",
     "callfuncsexport": "C_FILE",
     "imageexport": "SOURCE",

@@ -40,6 +40,13 @@ extern lv_obj_t * ui_LblCurPlaying;
 extern lv_obj_t * ui_PnlHorLine;
 extern lv_obj_t * ui_PnlVerLine;
 extern lv_obj_t * ui_SldrVolume;
+extern lv_obj_t * ui_Container6;
+extern lv_obj_t * ui_Button6;
+extern lv_obj_t * ui_Label1;
+extern lv_obj_t * ui_Button7;
+extern lv_obj_t * ui_Label2;
+extern lv_obj_t * ui_Button8;
+extern lv_obj_t * ui_Label3;
 // CUSTOM VARIABLES
 
 #ifdef __cplusplus

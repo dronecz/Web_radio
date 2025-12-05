@@ -32,6 +32,13 @@ lv_obj_t * ui_LblCurPlaying = NULL;
 lv_obj_t * ui_PnlHorLine = NULL;
 lv_obj_t * ui_PnlVerLine = NULL;
 lv_obj_t * ui_SldrVolume = NULL;
+lv_obj_t * ui_Container6 = NULL;
+lv_obj_t * ui_Button6 = NULL;
+lv_obj_t * ui_Label1 = NULL;
+lv_obj_t * ui_Button7 = NULL;
+lv_obj_t * ui_Label2 = NULL;
+lv_obj_t * ui_Button8 = NULL;
+lv_obj_t * ui_Label3 = NULL;
 // event funtions
 
 // build funtions
@@ -395,6 +402,64 @@ void ui_Screen1_screen_init(void)
     //Compensating for LVGL9.1 draw crash with bar/slider max value when top-padding is nonzero and right-padding is 0
     if(lv_obj_get_style_pad_top(ui_SldrVolume, LV_PART_MAIN) > 0) lv_obj_set_style_pad_right(ui_SldrVolume,
                                                                                                  lv_obj_get_style_pad_right(ui_SldrVolume, LV_PART_MAIN) + 1, LV_PART_MAIN);
+    ui_Container6 = lv_obj_create(ui_Screen1);
+    lv_obj_remove_style_all(ui_Container6);
+    lv_obj_set_width(ui_Container6, 254);
+    lv_obj_set_height(ui_Container6, 80);
+    lv_obj_set_x(ui_Container6, 0);
+    lv_obj_set_y(ui_Container6, -10);
+    lv_obj_set_align(ui_Container6, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_Container6, LV_OBJ_FLAG_HIDDEN);     /// Flags
+    lv_obj_remove_flag(ui_Container6, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_radius(ui_Container6, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_Container6, lv_color_hex(0x828080), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Container6, 220, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(ui_Container6, lv_color_hex(0xB5B5B5), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_Container6, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_Container6, 3, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_Button6 = lv_button_create(ui_Container6);
+    lv_obj_set_width(ui_Button6, 51);
+    lv_obj_set_height(ui_Button6, 50);
+    lv_obj_set_x(ui_Button6, -75);
+    lv_obj_set_y(ui_Button6, 0);
+    lv_obj_set_align(ui_Button6, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_Button6, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_remove_flag(ui_Button6, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+
+    ui_Label1 = lv_label_create(ui_Button6);
+    lv_obj_set_width(ui_Label1, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_Label1, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_align(ui_Label1, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_Label1, "MODE");
+
+    ui_Button7 = lv_button_create(ui_Container6);
+    lv_obj_set_width(ui_Button7, 51);
+    lv_obj_set_height(ui_Button7, 50);
+    lv_obj_set_align(ui_Button7, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_Button7, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_remove_flag(ui_Button7, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+
+    ui_Label2 = lv_label_create(ui_Button7);
+    lv_obj_set_width(ui_Label2, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_Label2, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_align(ui_Label2, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_Label2, "-");
+
+    ui_Button8 = lv_button_create(ui_Container6);
+    lv_obj_set_width(ui_Button8, 51);
+    lv_obj_set_height(ui_Button8, 50);
+    lv_obj_set_x(ui_Button8, 75);
+    lv_obj_set_y(ui_Button8, 0);
+    lv_obj_set_align(ui_Button8, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_Button8, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_remove_flag(ui_Button8, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+
+    ui_Label3 = lv_label_create(ui_Button8);
+    lv_obj_set_width(ui_Label3, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_Label3, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_align(ui_Label3, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_Label3, "--");
 
 }
 
@@ -430,5 +495,12 @@ void ui_Screen1_screen_destroy(void)
     ui_PnlHorLine = NULL;
     ui_PnlVerLine = NULL;
     ui_SldrVolume = NULL;
+    ui_Container6 = NULL;
+    ui_Button6 = NULL;
+    ui_Label1 = NULL;
+    ui_Button7 = NULL;
+    ui_Label2 = NULL;
+    ui_Button8 = NULL;
+    ui_Label3 = NULL;
 
 }
