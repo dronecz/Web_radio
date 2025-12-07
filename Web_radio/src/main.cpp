@@ -32,6 +32,7 @@ Sketch settings for ESP32-S3 Dev module:
 #include "Audio.h"
 #include "EncoderRead.h"
 #include <lvgl.h>
+#include <WiFiManager.h>
 
 #ifdef small
 #include "ui/small/ui.h"
@@ -43,6 +44,7 @@ Sketch settings for ESP32-S3 Dev module:
 #include <WiFi.h>
 #include "time.h"
 #include "esp_sntp.h"
+#include "esp_wifi.h"
 #include "stations.h"
 
 EncoderRead encoder(21, 46, 14); //PinA, PinB,buttons (PinA and PinB must be connected to interrupt-supported pins).
@@ -58,6 +60,8 @@ const int daylightOffset_sec = 3600;
 #define I2S_BCLK 5
 #define I2S_LRC 6
 Audio audio;
+
+WiFiManager wm;
 
 /* More dev device declaration: https://github.com/moononournation/Arduino_GFX/wiki/Dev-Device-Declaration */
 #if defined(DISPLAY_DEV_KIT)
@@ -88,6 +92,9 @@ uint32_t screenHeight;
 uint32_t bufSize;
 lv_display_t *disp;
 lv_color_t *disp_draw_buf;
+
+lv_timer_t *connecting_timer;
+uint8_t dotCount = 0;
 
 #include "FFT.h"
 // --- LVGL canvas ---
@@ -487,38 +494,80 @@ void my_audio_info(Audio::msg_t m) {
   }
 }
 
-void setup() {
-  Audio::audio_info_callback = my_audio_info;
-  Serial.begin(115200);
+bool wifiCredentialsStored() {
+    wifi_config_t conf;
+    esp_wifi_get_config(WIFI_IF_STA, &conf);
 
-  initButtons();
+    // SSID je prázdný? → nic uloženého není
+    if (strlen((char*)conf.sta.ssid) == 0) {
+        return false;
+    }
+    return true;
+}
 
-  Serial.println("Arduino_GFX LVGL_Arduino_v9 example ");
-  String LVGL_Arduino = String('V') + lv_version_major() + "." + lv_version_minor() + "." + lv_version_patch();
-  Serial.println(LVGL_Arduino);
+void connecting_animation(lv_timer_t * timer) {
+    static char buff[32];
 
-  audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+    dotCount = (dotCount + 1) % 4; // 0,1,2,3 → pak zpět
+    snprintf(buff, sizeof(buff), "Connecting%s", 
+             dotCount == 0 ? "" :
+             dotCount == 1 ? "." :
+             dotCount == 2 ? ".." : "...");
 
-  // Volume (0-100)
-  audio.setVolume(7);
+    lv_label_set_text(ui_LblInfo, buff);
+}
 
-  encoder.begin();
+void connectToWiFi() {
 
-#ifdef GFX_EXTRA_PRE_INIT
-  GFX_EXTRA_PRE_INIT();
-#endif
+    // 1) Zkontrolujeme, jestli v NVS existují uložené údaje
+    // if (!wifiCredentialsStored()) {
+    //     Serial.println("No WiFi credentials → launching WiFiManager");
 
-  // Init Display
-  if (!gfx->begin()) {
-    Serial.println("gfx->begin() failed!");
-  }
-  gfx->fillScreen(BLACK);
+    //     lv_scr_load(ui_ScrWiFiManager);
 
-#ifdef GFX_BL
-  // Use single LEDC channel 0
-  ledcAttachChannel(GFX_BL, LEDC_BASE_FREQ, LEDC_TIMER_8_BIT, LEDC_CHANNEL);
-#endif
+    //     wm.autoConnect("MusicPlayerAP", "password");
 
+    //     return; // po konfiguraci WiFiManager sám uloží data do NVS
+    // }
+
+    // 2) Spustíme boot screen + animaci
+    lv_scr_load(ui_ScrBoot);
+    lv_label_set_text(ui_LblInfo, "Connecting");
+
+    connecting_timer = lv_timer_create(connecting_animation, 400, NULL);
+
+    WiFi.mode(WIFI_STA);
+    WiFi.begin();
+
+    uint32_t start = millis();
+    const uint32_t timeout = 8000;
+
+    // 3) Pokus o spojení
+    while (WiFi.status() != WL_CONNECTED && millis() - start < timeout) {
+        lv_timer_handler();
+        delay(5);
+    }
+
+    // 4) Výsledek
+    lv_timer_del(connecting_timer);
+
+    if (WiFi.status() == WL_CONNECTED) {
+        lv_label_set_text(ui_LblInfo, "Connected!");
+        delay(600);
+
+        lv_scr_load(ui_ScrRadioPlayer);
+    } else {
+        lv_label_set_text(ui_LblInfo, "Failed → WiFi Manager");
+        delay(800);
+
+        lv_scr_load(ui_ScrWiFiManager);
+
+        wm.autoConnect("MusicPlayerAP", "password");
+    }
+}
+
+
+  void syncTime(){
   // set notification call-back function
   //sntp_set_time_sync_notification_cb(timeavailable);
 
@@ -545,21 +594,15 @@ void setup() {
      * A list of rules for your zone could be obtained from https://github.com/esp8266/Arduino/blob/master/cores/esp8266/TZ.h
      */
   //configTzTime(time_zone, ntpServer1, ntpServer2);
-
-  //connect to WiFi
-  Serial.printf("Connecting to %s ", SECRET_SSID);
-
-  WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  /*
+  
+  
+    /*
         Sync time with NTP server and update ESP32 RTC
         getLocalTime() return false if time is not set
-    */
+  */
+
   Serial.println("Syncing time with NTP server..");
+  lv_label_set_text(ui_LblInfo, "Syncing time..");
   struct tm timeinfo;
   while (!getLocalTime(&timeinfo)) {
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
@@ -576,17 +619,24 @@ void setup() {
 
   Serial.println("");
   printLocalTime();
+  }
 
-  lv_init();
+  void displaySetup(){
 
-  /*Set a tick source so that LVGL will know how much time elapsed. */
-  lv_tick_set_cb(millis_cb);
-
-  /* register print function for debugging */
-#if LV_USE_LOG != 0
-  lv_log_register_print_cb(my_print);
+    #ifdef GFX_EXTRA_PRE_INIT
+  GFX_EXTRA_PRE_INIT();
 #endif
 
+  // Init Display
+  if (!gfx->begin()) {
+    Serial.println("gfx->begin() failed!");
+  }
+  gfx->fillScreen(BLACK);
+
+#ifdef GFX_BL
+  // Use single LEDC channel 0
+  ledcAttachChannel(GFX_BL, LEDC_BASE_FREQ, LEDC_TIMER_8_BIT, LEDC_CHANNEL);
+#endif
   screenWidth = gfx->width();
   screenHeight = gfx->height();
 
@@ -621,9 +671,37 @@ void setup() {
     lv_display_set_buffers(disp, disp_draw_buf, NULL, bufSize * 2, LV_DISPLAY_RENDER_MODE_PARTIAL);
 #endif
   }
+}
 
-  //declare the function to create a group for the rotary encoder
-  
+void setup() {
+  Audio::audio_info_callback = my_audio_info;
+  Serial.begin(115200);
+
+  initButtons();
+
+  Serial.println("Arduino_GFX LVGL_Arduino_v9 example ");
+  String LVGL_Arduino = String('V') + lv_version_major() + "." + lv_version_minor() + "." + lv_version_patch();
+  Serial.println(LVGL_Arduino);
+
+  audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+
+  // Volume (0-100)
+  audio.setVolume(7);
+
+  encoder.begin();
+
+  lv_init();
+
+  /*Set a tick source so that LVGL will know how much time elapsed. */
+  lv_tick_set_cb(millis_cb);
+
+  /* register print function for debugging */
+#if LV_USE_LOG != 0
+  lv_log_register_print_cb(my_print);
+#endif
+
+displaySetup();
+
 
   //Initialize the Rotary Encoder input device.
   indev_encoder = lv_indev_create();
@@ -631,6 +709,10 @@ void setup() {
   lv_indev_set_read_cb(indev_encoder, encoder_read);
   
   ui_init();
+
+  connectToWiFi();
+
+  syncTime();
 
   //mapping of hw buttons to LVGL buttons
   lvglButtons[0] = ui_Button1;
