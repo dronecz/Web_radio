@@ -558,11 +558,11 @@ void connectToWiFi() {
         lv_scr_load(ui_ScrRadioPlayer);
     } else {
         lv_label_set_text(ui_LblInfo, "Failed → WiFi Manager");
-        delay(800);
-
         lv_scr_load(ui_ScrWiFiManager);
 
-        wm.autoConnect("MusicPlayerAP", "password");
+        //delay(800);
+
+        //wm.autoConnect("MusicPlayerAP", "password");
     }
 }
 
