@@ -160,7 +160,7 @@ static void draw_fft_level_meter(Arduino_GFX *meter_gfx)
       prev_h[bx] = h;
       if (h < ph)
       {
-        meter_gfx->fillRect(x, y - (ph - h), bw - 1, ph - h, BLACK);
+        meter_gfx->fillRect(x, y - (ph - h), bw - 1, ph - h, RGB565_BLACK);
       }
       while (y < fft_height)
       {
@@ -171,7 +171,7 @@ static void draw_fft_level_meter(Arduino_GFX *meter_gfx)
     int32_t py = peak_y[bx] + 1;
     if (py < y)
     {
-      meter_gfx->writeFastHLine(x, py - 1, bw - 1, BLACK);
+      meter_gfx->writeFastHLine(x, py - 1, bw - 1, RGB565_BLACK);
     }
     else
     {
