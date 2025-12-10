@@ -127,21 +127,12 @@ bool ready_to_fft = false;
 static unsigned long targetCountTime;
 int year, month, day, hour, minutes, sec = 0;
 
-// use 8 bit precision for LEDC timer
-#define LEDC_TIMER_8_BIT 8
-
-// use 5000 Hz as a LEDC base frequency
-#define LEDC_BASE_FREQ 5000
-
-// LED channel that will be used instead of automatic selection.
-#define LEDC_CHANNEL 0
-
 int brightness = 32; // initial brightness of the screen 0 - 255
 
 byte playerMode = -1; // 0 - radio, 1 = MP3 player, 2 = streaming player
 
 const int buttonCount = 5;
-const int buttonPins[buttonCount] = {40, 41, 42, 43, 44};
+const int buttonPins[buttonCount] = {40, 41, 42, 44, 43};
 
 bool currentStates[buttonCount];
 bool previousStates[buttonCount];
@@ -275,7 +266,7 @@ void processEncoder()
   if (playerMode == 0)
   {
     byte nevim = 0;
-    if (nevim != 1)
+    if (nevim != 0)
     {
       lv_group_t *modeGroup = lv_group_create();
       lv_obj_t *focused_obj = lv_group_get_focused(modeGroup);
@@ -766,7 +757,7 @@ void setup()
 
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
 
-  // Volume (0-100)
+  // Volume (0-21)
   audio.setVolume(7);
 
   encoder.begin();
@@ -790,14 +781,14 @@ void setup()
 
   ui_init();
 
-  //connectToWiFi();
+  connectToWiFi();
   Serial.printf("Connecting to %s ", SECRET_SSID);
 
-  WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
+  // WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
+  // while (WiFi.status() != WL_CONNECTED) {
+  //   delay(500);
+  //   Serial.print(".");
+  // }
 
   syncTime();
 
@@ -878,8 +869,6 @@ void loop()
       draw_fft_level_meter_lvgl(canvas);
     }
   }
-  // set the brightness on LEDC channel 0
-  // ledcWriteChannel(LEDC_CHANNEL, brightness);
   readVolumeValue();
   lv_task_handler(); /* let the GUI do its work */
   processButtons();
