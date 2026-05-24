@@ -17,9 +17,10 @@ EncoderRead::EncoderRead(uint8_t pinA, uint8_t pinB, uint8_t btnPin)
 }
 
 void EncoderRead::begin() {
-    pinMode(_pinA, INPUT);
-    pinMode(_pinB, INPUT);
-    pinMode(_btnPin, INPUT);
+    // Use pull-ups to avoid floating inputs, especially on the push button.
+    pinMode(_pinA, INPUT_PULLUP);
+    pinMode(_pinB, INPUT_PULLUP);
+    pinMode(_btnPin, INPUT_PULLUP);
     
     attachInterrupt(digitalPinToInterrupt(_pinA), EncoderRead::readEncoder, CHANGE);
     attachInterrupt(digitalPinToInterrupt(_pinB), EncoderRead::readEncoder, CHANGE);
@@ -65,23 +66,25 @@ void EncoderRead::readEncoder() {
 }
 
 bool EncoderRead::encBtn() {
-    static uint32_t lastPressTime = 0;
-    static uint32_t lastDebounceTime = 0;
-    static bool lastState = false;
-    uint32_t currentTime = millis();
+    // Debounced level read (not edge pulse).
+    // With INPUT_PULLUP: LOW = pressed, HIGH = released.
+    static bool lastRaw = HIGH;
+    static bool stableRaw = HIGH;
+    static uint32_t lastChangeTime = 0;
 
-    bool currentState = digitalRead(_btnPin) == HIGH;
-    if (currentState != lastState) {
-        if (currentTime - lastPressTime > 50) { // 50 ms debounce
-            lastPressTime = currentTime;
-            lastState = currentState;
-            return currentState;
-            
-        }
+    bool raw = digitalRead(_btnPin);
+    uint32_t now = millis();
+
+    if (raw != lastRaw) {
+        lastRaw = raw;
+        lastChangeTime = now;
     }
 
+    if ((now - lastChangeTime) >= 30) {
+        stableRaw = raw;
+    }
 
-    return false;
+    return (stableRaw == LOW);
 }
 
 

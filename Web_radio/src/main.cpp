@@ -33,6 +33,8 @@ Sketch settings for ESP32-S3 Dev module:
 #include "EncoderRead.h"
 #include <lvgl.h>
 #include <WiFiManager.h>
+#include <Preferences.h>
+#include <mutex>
 
 #ifdef small
 #include "ui/small/ui.h"
@@ -42,12 +44,20 @@ Sketch settings for ESP32-S3 Dev module:
 #endif
 
 #include <WiFi.h>
+#include <SD.h>
+#include <SPI.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+#include <ArduinoJson.h>
 #include "time.h"
 #include "esp_sntp.h"
 #include "esp_wifi.h"
 #include "stations.h"
+#include <vector>
+#include <algorithm>
+#include <functional>
 
-EncoderRead encoder(21, 46, 14); // PinA, PinB,buttons (PinA and PinB must be connected to interrupt-supported pins).
+EncoderRead encoder(14, 21, 46); // PinA, PinB, Button
 
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;
@@ -62,6 +72,8 @@ const int daylightOffset_sec = 3600;
 Audio audio;
 
 WiFiManager wm;
+
+Preferences prefs;
 
 /* More dev device declaration: https://github.com/moononournation/Arduino_GFX/wiki/Dev-Device-Declaration */
 #if defined(DISPLAY_DEV_KIT)
@@ -115,21 +127,41 @@ static lv_color_t *canvas_buf;
 #define NUM_BARS 35
 #define BAR_WIDTH (CANVAS_WIDTH / NUM_BARS)
 #define SAMPLE_RATE 44100
-static uint32_t fft_auto_max = 10000;
+#define DEBUG_CANVAS_HEARTBEAT 0
+#define FFT_DEBUG_LOG 0
+#define FFT_IDLE_WAVE_WHEN_SILENT 1
+static uint32_t fft_auto_max = 300;
 float fft_magnitudes[FFT_SIZE / 2] = {0};
 
 // --- FFT ---
-#define FFT_SIZE 512
 int16_t fft_buffer[FFT_SIZE * 2];
 size_t fft_index = 0;
-bool ready_to_fft = false;
+std::atomic<bool> ready_to_fft{false};
+std::atomic<uint32_t> fft_cb_calls{0};
+std::atomic<uint32_t> fft_exec_calls{0};
+std::atomic<uint32_t> fft_raw_calls{0};
+std::atomic<uint32_t> fft_i2s_calls{0};
+std::atomic<bool> fft_raw_active{false};
+
+std::mutex uiTextMutex;
+char pendingStationText[192] = {0};
+char pendingTitleText[512] = {0};
+std::atomic<bool> pendingStationUpdate{false};
+std::atomic<bool> pendingTitleUpdate{false};
 
 static unsigned long targetCountTime;
 int year, month, day, hour, minutes, sec = 0;
 
 int brightness = 32; // initial brightness of the screen 0 - 255
 
-byte playerMode = -1; // 0 - radio, 1 = MP3 player, 2 = streaming player
+enum PlayerMode : uint8_t
+{
+  MODE_RADIO = 0,
+  MODE_SD_MP3 = 1,
+  MODE_JELLYFIN = 2
+};
+
+PlayerMode playerMode = MODE_RADIO;
 
 const int buttonCount = 5;
 const int buttonPins[buttonCount] = {40, 41, 42, 44, 43};
@@ -148,8 +180,8 @@ const unsigned long volumeCheckInterval = 250;
 const int changeTreshold = 1; // Minimální rozdíl pro aktualizaci
 int lastSliderValue = -1;     // Interní proměnné pro sledování stavu
 
-const int numOfStations = sizeof(stations) / sizeof(stations[0]);
-int currentStation = 0;
+//const int numOfStations = sizeof(stations) / sizeof(stations[0]);
+uint8_t currentStation = 0;
 
 lv_indev_t *indev_encoder;
 
@@ -161,6 +193,683 @@ extern lv_obj_t *ui_Button2;
 extern lv_obj_t *ui_Button3;
 extern lv_obj_t *ui_Button4;
 extern lv_obj_t *ui_Button5;
+
+const uint8_t numOfStations = 5;
+
+std::vector<String> sdTracks;
+int currentSdTrack = 0;
+bool sdInitialized = false;
+bool sdScanned = false;
+bool sdSpiInitialized = false;
+
+// Shared SPI bus with display wiring:
+// MOSI=11, MISO=13, SCK=12, SD CS=2
+static const uint8_t SD_CS_PIN = 2;
+static const uint8_t SD_MOSI_PIN = 11;
+static const uint8_t SD_MISO_PIN = 13;
+static const uint8_t SD_SCK_PIN = 12;
+
+struct JellyfinTrack
+{
+  String id;
+  String name;
+  String streamUrl;
+};
+
+std::vector<JellyfinTrack> jellyfinTracks;
+int currentJellyfinTrack = 0;
+bool jellyfinReady = false;
+String jellyfinBaseUrl;
+String jellyfinToken;
+String jellyfinUserId;
+
+#ifndef SECRET_JELLYFIN_SERVER
+#define SECRET_JELLYFIN_SERVER ""
+#endif
+#ifndef SECRET_JELLYFIN_USERNAME
+#define SECRET_JELLYFIN_USERNAME ""
+#endif
+#ifndef SECRET_JELLYFIN_PASSWORD
+#define SECRET_JELLYFIN_PASSWORD ""
+#endif
+#ifndef SECRET_JELLYFIN_API_KEY
+#define SECRET_JELLYFIN_API_KEY ""
+#endif
+#ifndef SECRET_JELLYFIN_USER_ID
+#define SECRET_JELLYFIN_USER_ID ""
+#endif
+
+static lv_obj_t *ui_ModeMusicTitle = nullptr;
+static lv_obj_t *ui_ModeMusicInfo = nullptr;
+static lv_obj_t *ui_ModeNetworkTitle = nullptr;
+static lv_obj_t *ui_ModeNetworkInfo = nullptr;
+
+static bool encoderBtnPrevPressed = false;
+static bool encoderLongPressHandled = false;
+static unsigned long encoderPressStart = 0;
+static const unsigned long encoderShortPressMinMs = 40;
+static const unsigned long encoderLongPressMs = 700;
+static int modeMenuSelection = 0; // 0: Radio, 1: MP3, 2: Jellyfin
+static int32_t encoderLastCounter = 0;
+
+static lv_obj_t *getStationButton(uint8_t station)
+{
+  switch (station)
+  {
+  case 0:
+    return ui_Button1;
+  case 1:
+    return ui_Button2;
+  case 2:
+    return ui_Button3;
+  case 3:
+    return ui_Button4;
+  case 4:
+    return ui_Button5;
+  default:
+    return nullptr;
+  }
+}
+
+static inline bool hasAudioExtension(const String &name)
+{
+  String lower = name;
+  lower.toLowerCase();
+  return lower.endsWith(".mp3") || lower.endsWith(".aac") || lower.endsWith(".wav") || lower.endsWith(".m4a") || lower.endsWith(".flac");
+}
+
+static String jellyfinUrlEncode(const String &value)
+{
+  String out;
+  out.reserve(value.length() * 3);
+  for (size_t i = 0; i < value.length(); i++)
+  {
+    char c = value[i];
+    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~')
+    {
+      out += c;
+    }
+    else
+    {
+      static const char *hex = "0123456789ABCDEF";
+      out += '%';
+      out += hex[(c >> 4) & 0x0F];
+      out += hex[c & 0x0F];
+    }
+  }
+  return out;
+}
+
+static String jellyfinAuthHeaderValue()
+{
+  return "MediaBrowser Client=\"WebRadio\", Device=\"ESP32-S3\", DeviceId=\"esp32s3_webradio\", Version=\"1.0.0\"";
+}
+
+static String jellyfinNormalizeBaseUrl(const char *base)
+{
+  String out = base ? String(base) : String();
+  out.trim();
+  while (out.endsWith("/"))
+    out.remove(out.length() - 1);
+  return out;
+}
+
+static void setModeInfoLabel(lv_obj_t *label, const char *text)
+{
+  if (!label)
+    return;
+  lv_label_set_text(label, text ? text : "");
+}
+
+static int modeToMenuSelection(PlayerMode mode)
+{
+  switch (mode)
+  {
+  case MODE_SD_MP3:
+    return 1;
+  case MODE_JELLYFIN:
+    return 2;
+  case MODE_RADIO:
+  default:
+    return 0;
+  }
+}
+
+static lv_obj_t *getModeMenuButtonBySelection(int sel)
+{
+  if (sel == 0)
+    return ui_Button6;
+  if (sel == 1)
+    return ui_Button7;
+  return ui_Button8;
+}
+
+static void updateModeMenuSelectionVisual()
+{
+  if (!ui_Button6 || !ui_Button7 || !ui_Button8)
+    return;
+
+  lv_obj_t *buttons[3] = {ui_Button6, ui_Button7, ui_Button8};
+  for (int i = 0; i < 3; i++)
+  {
+    if (i == modeMenuSelection)
+    {
+      lv_obj_add_state(buttons[i], LV_STATE_CHECKED);
+    }
+    else
+    {
+      lv_obj_clear_state(buttons[i], LV_STATE_CHECKED);
+    }
+  }
+}
+
+static bool isModeMenuVisible()
+{
+  if (!ui_Container6)
+    return false;
+  return !lv_obj_has_flag(ui_Container6, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void hideModeMenu()
+{
+  if (!ui_Container6)
+    return;
+  lv_obj_add_flag(ui_Container6, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void showModeMenu()
+{
+  if (!ui_Container6)
+    return;
+
+  lv_obj_t *active = lv_screen_active();
+  if (active)
+  {
+    lv_obj_set_parent(ui_Container6, active);
+    lv_obj_align(ui_Container6, LV_ALIGN_CENTER, 0, -10);
+  }
+  modeMenuSelection = modeToMenuSelection(playerMode);
+  updateModeMenuSelectionVisual();
+  lv_obj_clear_flag(ui_Container6, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_move_foreground(ui_Container6);
+}
+
+static bool jellyfinHttpGet(const String &url, String &response, int &statusCode, bool addToken)
+{
+  HTTPClient http;
+  statusCode = -1;
+
+  if (url.startsWith("https://"))
+  {
+    WiFiClientSecure client;
+    client.setInsecure();
+    if (!http.begin(client, url))
+      return false;
+  }
+  else
+  {
+    WiFiClient client;
+    if (!http.begin(client, url))
+      return false;
+  }
+
+  http.addHeader("Accept", "application/json");
+  http.addHeader("X-Emby-Authorization", jellyfinAuthHeaderValue());
+  if (addToken && jellyfinToken.length() > 0)
+    http.addHeader("X-Emby-Token", jellyfinToken);
+
+  statusCode = http.GET();
+  response = http.getString();
+  http.end();
+  return statusCode > 0;
+}
+
+static bool jellyfinHttpPostJson(const String &url, const String &body, String &response, int &statusCode)
+{
+  HTTPClient http;
+  statusCode = -1;
+
+  if (url.startsWith("https://"))
+  {
+    WiFiClientSecure client;
+    client.setInsecure();
+    if (!http.begin(client, url))
+      return false;
+  }
+  else
+  {
+    WiFiClient client;
+    if (!http.begin(client, url))
+      return false;
+  }
+
+  http.addHeader("Accept", "application/json");
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-Emby-Authorization", jellyfinAuthHeaderValue());
+
+  statusCode = http.POST((uint8_t *)body.c_str(), body.length());
+  response = http.getString();
+  http.end();
+  return statusCode > 0;
+}
+
+static bool jellyfinResolveUserIdFromToken()
+{
+  if (jellyfinUserId.length() > 0)
+    return true;
+
+  String payload;
+  int code = -1;
+  if (!jellyfinHttpGet(jellyfinBaseUrl + "/Users/Me", payload, code, true) || (code < 200 || code >= 300))
+    return false;
+
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, payload);
+  if (err)
+    return false;
+
+  const char *id = doc["Id"];
+  if (!id || strlen(id) == 0)
+    return false;
+
+  jellyfinUserId = id;
+  return true;
+}
+
+static bool jellyfinLogin()
+{
+  jellyfinReady = false;
+  jellyfinTracks.clear();
+
+  jellyfinBaseUrl = jellyfinNormalizeBaseUrl(SECRET_JELLYFIN_SERVER);
+  jellyfinUserId = String(SECRET_JELLYFIN_USER_ID);
+  jellyfinToken = "";
+
+  if (jellyfinBaseUrl.length() == 0)
+  {
+    setModeInfoLabel(ui_ModeNetworkInfo, "Set SECRET_JELLYFIN_SERVER");
+    return false;
+  }
+
+  const String apiKey = String(SECRET_JELLYFIN_API_KEY);
+  if (apiKey.length() > 0)
+  {
+    jellyfinToken = apiKey;
+    if (!jellyfinResolveUserIdFromToken() && jellyfinUserId.length() == 0)
+    {
+      setModeInfoLabel(ui_ModeNetworkInfo, "Set SECRET_JELLYFIN_USER_ID for API key mode");
+      return false;
+    }
+    return true;
+  }
+
+  const String username = String(SECRET_JELLYFIN_USERNAME);
+  const String password = String(SECRET_JELLYFIN_PASSWORD);
+  if (username.length() == 0 || password.length() == 0)
+  {
+    setModeInfoLabel(ui_ModeNetworkInfo, "Set Jellyfin user/password or API key");
+    return false;
+  }
+
+  JsonDocument bodyDoc;
+  bodyDoc["Username"] = username;
+  bodyDoc["Pw"] = password;
+  String body;
+  serializeJson(bodyDoc, body);
+
+  String payload;
+  int code = -1;
+  if (!jellyfinHttpPostJson(jellyfinBaseUrl + "/Users/AuthenticateByName", body, payload, code) || (code < 200 || code >= 300))
+  {
+    Serial.printf("Jellyfin login failed: %d\n", code);
+    setModeInfoLabel(ui_ModeNetworkInfo, "Jellyfin login failed");
+    return false;
+  }
+
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, payload);
+  if (err)
+  {
+    setModeInfoLabel(ui_ModeNetworkInfo, "Jellyfin auth parse error");
+    return false;
+  }
+
+  const char *token = doc["AccessToken"];
+  const char *uid = doc["User"]["Id"];
+  if (!token || !uid)
+  {
+    setModeInfoLabel(ui_ModeNetworkInfo, "Jellyfin auth missing token/user");
+    return false;
+  }
+
+  jellyfinToken = token;
+  jellyfinUserId = uid;
+  return true;
+}
+
+static bool jellyfinLoadLibrary()
+{
+  if (jellyfinToken.length() == 0 || jellyfinBaseUrl.length() == 0)
+    return false;
+
+  jellyfinTracks.clear();
+  const int pageSize = 100;
+  int startIndex = 0;
+  const int maxItems = 600;
+
+  while ((int)jellyfinTracks.size() < maxItems)
+  {
+    String url;
+    if (jellyfinUserId.length() > 0)
+      url = jellyfinBaseUrl + "/Users/" + jellyfinUserId + "/Items";
+    else
+      url = jellyfinBaseUrl + "/Items";
+
+    url += "?Recursive=true&IncludeItemTypes=Audio&SortBy=SortName&SortOrder=Ascending";
+    url += "&StartIndex=" + String(startIndex) + "&Limit=" + String(pageSize);
+    url += "&Fields=MediaSources";
+
+    String payload;
+    int code = -1;
+    if (!jellyfinHttpGet(url, payload, code, true) || (code < 200 || code >= 300))
+    {
+      Serial.printf("Jellyfin browse failed: %d\n", code);
+      return false;
+    }
+
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, payload);
+    if (err)
+      return false;
+
+    JsonArray items = doc["Items"].as<JsonArray>();
+    if (items.isNull() || items.size() == 0)
+      break;
+
+    for (JsonVariant item : items)
+    {
+      const char *id = item["Id"];
+      const char *name = item["Name"];
+      if (!id || !name)
+        continue;
+
+      JellyfinTrack track;
+      track.id = id;
+      track.name = name;
+      track.streamUrl = jellyfinBaseUrl + "/Audio/" + track.id + "/stream?static=true&api_key=" + jellyfinUrlEncode(jellyfinToken);
+      if (jellyfinUserId.length() > 0)
+        track.streamUrl += "&UserId=" + jellyfinUrlEncode(jellyfinUserId);
+      jellyfinTracks.push_back(track);
+
+      if ((int)jellyfinTracks.size() >= maxItems)
+        break;
+    }
+
+    if ((int)items.size() < pageSize)
+      break;
+
+    startIndex += pageSize;
+  }
+
+  std::sort(jellyfinTracks.begin(), jellyfinTracks.end(), [](const JellyfinTrack &a, const JellyfinTrack &b)
+            { return a.name < b.name; });
+
+  return !jellyfinTracks.empty();
+}
+
+static bool ensureJellyfinSessionAndLibrary()
+{
+  if (jellyfinReady && !jellyfinTracks.empty())
+    return true;
+
+  setModeInfoLabel(ui_ModeNetworkInfo, "Jellyfin: login...");
+  if (!jellyfinLogin())
+    return false;
+
+  setModeInfoLabel(ui_ModeNetworkInfo, "Jellyfin: loading library...");
+  if (!jellyfinLoadLibrary())
+  {
+    setModeInfoLabel(ui_ModeNetworkInfo, "Jellyfin: no tracks or browse failed");
+    return false;
+  }
+
+  jellyfinReady = true;
+  Serial.printf("Jellyfin tracks loaded: %d\n", (int)jellyfinTracks.size());
+  return true;
+}
+
+static void ensureModeScreensUi()
+{
+  if (ui_ScrMusicPlayer && !ui_ModeMusicTitle)
+  {
+    ui_ModeMusicTitle = lv_label_create(ui_ScrMusicPlayer);
+    lv_obj_set_align(ui_ModeMusicTitle, LV_ALIGN_TOP_MID);
+    lv_obj_set_y(ui_ModeMusicTitle, 20);
+    lv_obj_set_style_text_font(ui_ModeMusicTitle, &ui_font_Roboto_Reg_18, LV_PART_MAIN);
+    lv_label_set_text(ui_ModeMusicTitle, "SD MP3 Player");
+
+    ui_ModeMusicInfo = lv_label_create(ui_ScrMusicPlayer);
+    lv_obj_set_width(ui_ModeMusicInfo, lv_pct(90));
+    lv_obj_set_align(ui_ModeMusicInfo, LV_ALIGN_CENTER);
+    lv_obj_set_style_text_align(ui_ModeMusicInfo, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_label_set_long_mode(ui_ModeMusicInfo, LV_LABEL_LONG_SCROLL);
+    lv_obj_set_style_anim_duration(ui_ModeMusicInfo, 5000, LV_PART_MAIN);
+    lv_label_set_text(ui_ModeMusicInfo, "No SD track selected");
+  }
+
+  if (ui_ScrNetworkPlayer && !ui_ModeNetworkTitle)
+  {
+    ui_ModeNetworkTitle = lv_label_create(ui_ScrNetworkPlayer);
+    lv_obj_set_align(ui_ModeNetworkTitle, LV_ALIGN_TOP_MID);
+    lv_obj_set_y(ui_ModeNetworkTitle, 20);
+    lv_obj_set_style_text_font(ui_ModeNetworkTitle, &ui_font_Roboto_Reg_18, LV_PART_MAIN);
+    lv_label_set_text(ui_ModeNetworkTitle, "Jellyfin Player");
+
+    ui_ModeNetworkInfo = lv_label_create(ui_ScrNetworkPlayer);
+    lv_obj_set_width(ui_ModeNetworkInfo, lv_pct(90));
+    lv_obj_set_align(ui_ModeNetworkInfo, LV_ALIGN_CENTER);
+    lv_obj_set_style_text_align(ui_ModeNetworkInfo, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_label_set_long_mode(ui_ModeNetworkInfo, LV_LABEL_LONG_SCROLL);
+    lv_obj_set_style_anim_duration(ui_ModeNetworkInfo, 5000, LV_PART_MAIN);
+    lv_label_set_text(ui_ModeNetworkInfo, "No Jellyfin stream configured");
+  }
+}
+
+static bool initAndScanSD()
+{
+  if (!sdInitialized)
+  {
+    if (!sdSpiInitialized)
+    {
+      SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+      sdSpiInitialized = true;
+      Serial.printf("SD SPI init: CS=%u MOSI=%u MISO=%u SCK=%u\n",
+                    (unsigned)SD_CS_PIN,
+                    (unsigned)SD_MOSI_PIN,
+                    (unsigned)SD_MISO_PIN,
+                    (unsigned)SD_SCK_PIN);
+    }
+
+    // 16 MHz is usually stable with shared SPI devices and jumper wires.
+    sdInitialized = SD.begin(SD_CS_PIN, SPI, 16000000);
+    if (!sdInitialized)
+    {
+      Serial.println("SD init failed");
+      setModeInfoLabel(ui_ModeMusicInfo, "SD init failed");
+      return false;
+    }
+  }
+
+  if (sdScanned && !sdTracks.empty())
+    return true;
+
+  sdTracks.clear();
+  sdScanned = true;
+
+  const int maxDepth = 8;
+  const int maxTracks = 1500;
+
+  std::function<void(const String &, int)> scanDir = [&](const String &path, int depth)
+  {
+    if (depth > maxDepth || (int)sdTracks.size() >= maxTracks)
+      return;
+
+    File dir = SD.open(path.c_str());
+    if (!dir || !dir.isDirectory())
+      return;
+
+    File entry = dir.openNextFile();
+    while (entry)
+    {
+      String entryPath = String(entry.path());
+      if (entryPath.length() == 0)
+      {
+        entryPath = String(path);
+        if (!entryPath.endsWith("/"))
+          entryPath += "/";
+        entryPath += String(entry.name());
+      }
+
+      if (entry.isDirectory())
+      {
+        scanDir(entryPath, depth + 1);
+      }
+      else
+      {
+        if (hasAudioExtension(entryPath))
+          sdTracks.push_back(entryPath);
+      }
+
+      if ((int)sdTracks.size() >= maxTracks)
+        break;
+
+      entry = dir.openNextFile();
+    }
+  };
+
+  scanDir("/", 0);
+
+  std::sort(sdTracks.begin(), sdTracks.end());
+
+  Serial.printf("SD tracks found (recursive): %d\n", (int)sdTracks.size());
+  if (sdTracks.empty())
+  {
+    setModeInfoLabel(ui_ModeMusicInfo, "No audio files found on SD");
+    return false;
+  }
+  return true;
+}
+
+static void playSdTrack(int index)
+{
+  ensureModeScreensUi();
+  if (!initAndScanSD())
+    return;
+
+  if (index < 0)
+    index = (int)sdTracks.size() - 1;
+  if (index >= (int)sdTracks.size())
+    index = 0;
+  currentSdTrack = index;
+
+  const String &path = sdTracks[currentSdTrack];
+  Serial.println("Playing SD: " + path);
+  audio.stopSong();
+  audio.connecttoFS(SD, path.c_str());
+  setModeInfoLabel(ui_ModeMusicInfo, path.c_str());
+}
+
+static void playJellyfinTrack(int index)
+{
+  ensureModeScreensUi();
+  if (!ensureJellyfinSessionAndLibrary())
+    return;
+
+  int total = (int)jellyfinTracks.size();
+  if (total <= 0)
+  {
+    setModeInfoLabel(ui_ModeNetworkInfo, "Jellyfin library is empty");
+    return;
+  }
+
+  if (index < 0)
+    index = total - 1;
+  if (index >= total)
+    index = 0;
+
+  currentJellyfinTrack = index;
+  const JellyfinTrack &track = jellyfinTracks[currentJellyfinTrack];
+
+  Serial.printf("Playing Jellyfin track: %s\n", track.name.c_str());
+  audio.stopSong();
+  audio.connecttohost(track.streamUrl.c_str());
+  setModeInfoLabel(ui_ModeNetworkInfo, track.name.c_str());
+}
+
+static void setPlayerMode(PlayerMode mode)
+{
+  playerMode = mode;
+  modeMenuSelection = modeToMenuSelection(playerMode);
+  updateModeMenuSelectionVisual();
+  hideModeMenu();
+  ensureModeScreensUi();
+
+  switch (playerMode)
+  {
+  case MODE_RADIO:
+    lv_scr_load(ui_ScrRadioPlayer);
+    break;
+  case MODE_SD_MP3:
+    lv_scr_load(ui_ScrMusicPlayer);
+    playSdTrack(currentSdTrack);
+    break;
+  case MODE_JELLYFIN:
+    lv_scr_load(ui_ScrNetworkPlayer);
+    playJellyfinTrack(currentJellyfinTrack);
+    break;
+  }
+}
+
+static void playNextInCurrentMode()
+{
+  if (playerMode == MODE_RADIO)
+  {
+    uint8_t station = (currentStation + 1) % numOfStations;
+    lv_obj_t *btn = getStationButton(station);
+    if (btn)
+      lv_obj_send_event(btn, LV_EVENT_CLICKED, NULL);
+  }
+  else if (playerMode == MODE_SD_MP3)
+  {
+    playSdTrack(currentSdTrack + 1);
+  }
+  else
+  {
+    playJellyfinTrack(currentJellyfinTrack + 1);
+  }
+}
+
+static void playPrevInCurrentMode()
+{
+  if (playerMode == MODE_RADIO)
+  {
+    int station = (int)currentStation - 1;
+    if (station < 0)
+      station = numOfStations - 1;
+    lv_obj_t *btn = getStationButton((uint8_t)station);
+    if (btn)
+      lv_obj_send_event(btn, LV_EVENT_CLICKED, NULL);
+  }
+  else if (playerMode == MODE_SD_MP3)
+  {
+    playSdTrack(currentSdTrack - 1);
+  }
+  else
+  {
+    playJellyfinTrack(currentJellyfinTrack - 1);
+  }
+}
+
 
 #if LV_USE_LOG != 0
 void my_print(lv_log_level_t level, const char *buf)
@@ -199,6 +908,7 @@ void encoder_read(lv_indev_t *indev, lv_indev_data_t *data)
   bool btn_state = encoder.encBtn();
 
   data->enc_diff = counter - last_counter;
+  last_counter = counter;
 
   if (btn_state)
     data->state = LV_INDEV_STATE_PRESSED;
@@ -240,6 +950,24 @@ void processButtons()
         {
           activeButton = i;
 
+          if (playerMode != MODE_RADIO)
+          {
+            if (i == 0)
+            {
+              playPrevInCurrentMode();
+            }
+            else if (i == 1)
+            {
+              playNextInCurrentMode();
+            }
+            else if (i == 4)
+            {
+              setPlayerMode(MODE_RADIO);
+            }
+            previousStates[i] = reading;
+            continue;
+          }
+
           // remove "checked" state from all buttons
           for (int j = 0; j < buttonCount; j++)
           {
@@ -263,39 +991,95 @@ void processButtons()
 
 void processEncoder()
 {
-  if (playerMode == 0)
+  int32_t counter = encoder.getCounter();
+  int32_t diff = counter - encoderLastCounter;
+  if (diff != 0)
   {
-    byte nevim = 0;
-    if (nevim != 0)
+    encoderLastCounter = counter;
+    if (isModeMenuVisible())
     {
-      lv_group_t *modeGroup = lv_group_create();
-      lv_obj_t *focused_obj = lv_group_get_focused(modeGroup);
-      lv_indev_set_group(indev_encoder, modeGroup);
+      if (diff > 0)
+      {
+        modeMenuSelection = (modeMenuSelection + 1) % 3;
+      }
+      else
+      {
+        modeMenuSelection = (modeMenuSelection + 2) % 3;
+      }
+      updateModeMenuSelectionVisual();
+    }
+  }
 
-      if (encoder.encBtn())
-      { // Handle the objects on the screen when the rotary encoder button is pressed.
-        Serial.println("Encoder button pressed!");
-        // if(focused_obj == ui_Button1) {
-        //     lv_event_send(focused_obj, LV_EVENT_PRESSED, NULL);//Send the button press event for processing.
-        //     lv_obj_clear_state(focused_obj, LV_STATE_PRESSED); //Set effect when click button
-        //     lv_obj_add_state(focused_obj, LV_STATE_DEFAULT);
-        //     Serial.println("Button 1 pressed on Screen 2");
-        // } else if (focused_obj == ui_Button2) {
-        //     lv_event_send(focused_obj, LV_EVENT_PRESSED, NULL);
-        //     lv_obj_clear_state(focused_obj, LV_STATE_PRESSED);
-        //     lv_obj_add_state(focused_obj, LV_STATE_DEFAULT);
-        //     Serial.println("Button 2 pressed on Screen 2");
-        // }
+  bool pressed = encoder.encBtn();
+  unsigned long now = millis();
+
+  if (pressed && !encoderBtnPrevPressed)
+  {
+    encoderPressStart = now;
+    encoderLongPressHandled = false;
+  }
+
+  if (pressed && !encoderLongPressHandled)
+  {
+    if ((now - encoderPressStart) >= encoderLongPressMs)
+    {
+      Serial.printf("[ENC] LONG press (%lu ms)\n", (unsigned long)(now - encoderPressStart));
+      showModeMenu();
+      encoderLongPressHandled = true;
+    }
+  }
+
+  if (!pressed && encoderBtnPrevPressed)
+  {
+    unsigned long held = now - encoderPressStart;
+    if (!encoderLongPressHandled && held >= encoderShortPressMinMs)
+    {
+      Serial.printf("[ENC] SHORT press (%lu ms)\n", (unsigned long)held);
+      if (isModeMenuVisible())
+      {
+        lv_obj_t *btn = getModeMenuButtonBySelection(modeMenuSelection);
+        if (btn)
+          lv_obj_send_event(btn, LV_EVENT_CLICKED, NULL);
       }
     }
   }
+
+  encoderBtnPrevPressed = pressed;
 }
 
-void connectToStation(int stationIndex)
+void saveStation(uint8_t station)
 {
+    if (station >= numOfStations) return;
+
+    prefs.begin("radio", false);        // RW mode
+    prefs.putUChar("station", station);
+    prefs.end();
+
+    Serial.printf("Station %d saved\n", station);
+}
+
+uint8_t loadStation()
+{
+    prefs.begin("radio", true);
+    uint8_t station = prefs.getUChar("station", 0);
+    prefs.end();
+    
+    if (station >= numOfStations) {
+        Serial.println("Saved station invalid, using 0");
+        station = 0;
+    }
+   Serial.printf("Loaded station %d\n", station);
+    return station;
+}
+
+
+void connectToStation(uint8_t station)
+{
+  currentStation = station;
   audio.stopSong();
-  audio.connecttohost(stations[stationIndex]);
-  Serial.println("Connected to: " + String(stations[stationIndex]));
+  audio.connecttohost(stations[station]);
+  saveStation(station);
+  Serial.println("Connected to: " + String(stations[station]));
 }
 
 void btn_event_handler(lv_event_t *e)
@@ -311,6 +1095,7 @@ void btn_event_handler(lv_event_t *e)
     {
       Serial.println("Button1");
       _ui_state_modify(ui_Container1, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
+
       connectToStation(0);
     }
     else if (btn == ui_Button2)
@@ -340,6 +1125,27 @@ void btn_event_handler(lv_event_t *e)
   }
 }
 
+void mode_button_event_handler(lv_event_t *e)
+{
+  lv_event_code_t code = lv_event_get_code(e);
+  if (code != LV_EVENT_CLICKED)
+    return;
+
+  lv_obj_t *btn = (lv_obj_t *)lv_event_get_target(e);
+  if (btn == ui_Button6)
+  {
+    setPlayerMode(MODE_RADIO);
+  }
+  else if (btn == ui_Button7)
+  {
+    setPlayerMode(MODE_SD_MP3);
+  }
+  else if (btn == ui_Button8)
+  {
+    setPlayerMode(MODE_JELLYFIN);
+  }
+}
+
 int read_potentiometer()
 {
   int sum = 0;
@@ -360,7 +1166,8 @@ void readVolumeValue()
   lastVolumeCheck = now;
 
   int raw = read_potentiometer();
-  int volume = map(raw, 0, 4095, 0, 21);
+  uint8_t maxVolume = audio.getVolumeSteps();
+  int volume = map(raw, 0, 4095, 0, maxVolume);
 
   if (abs(volume - lastSliderValue) >= changeTreshold)
   {
@@ -368,9 +1175,6 @@ void readVolumeValue()
     lv_slider_set_value(ui_SldrVolume, volume, LV_ANIM_OFF);
     lastSliderValue = volume;
     audio.setVolume(volume);
-
-    Serial.print("Aktualizace slideru na: ");
-    Serial.println(volume);
     lv_obj_fade_out(ui_SldrVolume, 1000, 1000);
   }
 }
@@ -378,21 +1182,26 @@ void readVolumeValue()
 void countTime()
 {
   unsigned long currMillisCountTime = millis();
-  char numberString[2];
+  char numberString[3];
+
+  if (targetCountTime == 0)
+  {
+    targetCountTime = currMillisCountTime + 1000;
+    return;
+  }
+
   if (currMillisCountTime >= targetCountTime)
   {
     targetCountTime += 1000;
     sec++; // Advance second
     if (sec >= 60)
     {
-      minutes++; // Advance minutes
       sec = 0;
-      sprintf(numberString, "%02d", minutes);
-      lv_label_set_text(ui_LblMin, numberString);
+      minutes++; // Advance minutes
       if (minutes >= 60)
       {
-        hour++; // Advance hour
         minutes = 0;
+        hour++; // Advance hour
         if (hour >= 24)
         {
           hour = 0;
@@ -400,6 +1209,9 @@ void countTime()
         sprintf(numberString, "%02d", hour);
         lv_label_set_text(ui_LblHrs, numberString);
       }
+
+      sprintf(numberString, "%02d", minutes);
+      lv_label_set_text(ui_LblMin, numberString);
     }
     // Serial.println("Time is " + String(hh) + (":") + String(mm) + (":") + String(ss));
   }
@@ -407,7 +1219,19 @@ void countTime()
 
 void draw_fft_level_meter_lvgl(lv_obj_t *canvas)
 {
+  static float bar_level[NUM_BARS] = {0.0f};
   static uint8_t peak_y[NUM_BARS] = {0};
+  static uint8_t peak_hold[NUM_BARS] = {0};
+  uint32_t frame_max = 1;
+  bool use_vu_fallback = (fft_cb_calls.load(std::memory_order_relaxed) == 0);
+  uint16_t vu = audio.getVUlevel();
+  uint8_t vu_l = (uint8_t)(vu & 0xFF);
+  uint8_t vu_r = (uint8_t)((vu >> 8) & 0xFF);
+#if FFT_IDLE_WAVE_WHEN_SILENT
+  bool use_idle_animation = use_vu_fallback && (vu_l == 0) && (vu_r == 0);
+#else
+  bool use_idle_animation = false;
+#endif
 
   lv_canvas_fill_bg(canvas, lv_color_black(), LV_OPA_COVER);
 
@@ -420,44 +1244,121 @@ void draw_fft_level_meter_lvgl(lv_obj_t *canvas)
 
   lv_draw_rect_dsc_t dsc_peak;
   lv_draw_rect_dsc_init(&dsc_peak);
-  dsc_peak.bg_color = lv_color_white();
+  dsc_peak.bg_color = lv_color_make(240, 240, 255);
   dsc_peak.bg_opa = LV_OPA_COVER;
 
   for (int i = 0; i < NUM_BARS; i++)
   {
-    int fft_idx = i * (FFT_SIZE / 2) / NUM_BARS;
-    int magnitude = fft.get(fft_idx);
-    int h = (magnitude * CANVAS_HEIGHT) / fft_auto_max;
-    if (h > CANVAS_HEIGHT)
+    uint32_t magnitude = 0;
+
+    if (use_vu_fallback)
+    {
+      if (use_idle_animation)
+      {
+        // If VU is unavailable too, show a slow idle wave so user still gets visual feedback.
+        float t = millis() * 0.004f;
+        float p = (NUM_BARS > 1) ? ((float)i / (float)(NUM_BARS - 1)) : 0.0f;
+        float w1 = 0.5f + 0.5f * sinf((p * 7.0f) - t);
+        float w2 = 0.5f + 0.5f * sinf((p * 11.0f) + t * 1.37f);
+        magnitude = (uint32_t)((w1 * 0.7f + w2 * 0.3f) * 180.0f);
+      }
+      else
+      {
+        // Fallback mode: create bar graph from L/R VU when FFT hooks are unavailable.
+        float p = (NUM_BARS > 1) ? ((float)i / (float)(NUM_BARS - 1)) : 0.0f;
+        bool left_half = (p < 0.5f);
+        float local = left_half ? (p * 2.0f) : ((p - 0.5f) * 2.0f); // 0..1 within half
+        float shape = 0.65f + 0.35f * (1.0f - fabsf(local - 0.5f) * 2.0f); // center emphasis per half
+        uint8_t base = left_half ? vu_l : vu_r;
+        magnitude = (uint32_t)(base * shape);
+      }
+    }
+    else
+    {
+      // Log-like bin grouping (better low-frequency visibility than pure linear mapping)
+      int bin_start = (i * i * (FFT_SIZE / 2 - 2)) / (NUM_BARS * NUM_BARS) + 1; // skip DC
+      int bin_end = (((i + 1) * (i + 1) * (FFT_SIZE / 2 - 2)) / (NUM_BARS * NUM_BARS)) + 1;
+      if (bin_end <= bin_start)
+        bin_end = bin_start + 1;
+
+      uint32_t mag_sum = 0;
+      uint32_t mag_max = 0;
+      int cnt = 0;
+      for (int b = bin_start; b < bin_end; b++)
+      {
+        uint32_t m = fft.get(b);
+        mag_sum += m;
+        if (m > mag_max)
+          mag_max = m;
+        cnt++;
+      }
+      magnitude = cnt > 0 ? ((mag_sum / cnt) + mag_max) / 2 : 0;
+    }
+
+    if (magnitude > frame_max)
+      frame_max = magnitude;
+
+    uint32_t scale = use_vu_fallback ? 255 : (fft_auto_max > 0 ? fft_auto_max : 1);
+    float n = (float)magnitude / (float)scale;
+
+    // Noise gate + gamma for nicer motion
+    if (n < 0.03f)
+      n = 0.0f;
+    if (n > 1.0f)
+      n = 1.0f;
+    n = sqrtf(n);
+
+    float target = n * CANVAS_HEIGHT;
+    if (target > bar_level[i])
+      bar_level[i] = bar_level[i] * 0.15f + target * 0.85f; // very fast attack
+    else
+      bar_level[i] = bar_level[i] * 0.55f + target * 0.45f; // faster release
+
+    int h = (int)bar_level[i];
+    if (h > CANVAS_HEIGHT - 1)
       h = CANVAS_HEIGHT - 1;
+    if (h < 0)
+      h = 0;
 
     int x = i * BAR_WIDTH;
     int y_start = CANVAS_HEIGHT - h;
 
+    // Segmented vertical bars (3 px segment, 1 px gap)
     for (int y = 0; y < h; y++)
     {
-      float ratio = (float)(y) / CANVAS_HEIGHT;
-      uint8_t r = 0, g = 0;
+      if ((y & 0x03) == 0)
+        continue;
 
-      if (ratio <= 0.5f)
+      float ratio = (float)y / (float)CANVAS_HEIGHT;
+      uint8_t r = 0, g = 0;
+      uint8_t b = 0;
+
+      if (ratio <= 0.45f)
       {
-        float f = ratio / 0.5f;
-        r = (uint8_t)(f * 255);
-        g = 255;
+        // cyan -> green
+        float f = ratio / 0.45f;
+        r = 0;
+        g = (uint8_t)(160 + (95 * f));
+        b = (uint8_t)(220 * (1.0f - f));
       }
       else if (ratio <= 0.75f)
       {
-        float f = (ratio - 0.5f) / 0.25f;
-        r = 255;
-        g = (uint8_t)((1.0f - f) * 255);
+        // green -> orange
+        float f = (ratio - 0.45f) / 0.30f;
+        r = (uint8_t)(255 * f);
+        g = (uint8_t)(255 - (85 * f));
+        b = 0;
       }
       else
       {
+        // orange -> red
+        float f = (ratio - 0.75f) / 0.25f;
         r = 255;
-        g = 0;
+        g = (uint8_t)(170 * (1.0f - f));
+        b = 0;
       }
 
-      dsc_bar.bg_color = lv_color_make(r, g, 0);
+      dsc_bar.bg_color = lv_color_make(r, g, b);
 
       int y_pos = CANVAS_HEIGHT - y - 1;
       lv_area_t pixel_bar = {
@@ -466,15 +1367,23 @@ void draw_fft_level_meter_lvgl(lv_obj_t *canvas)
       lv_draw_rect(&layer, &dsc_bar, &pixel_bar);
     }
 
-    // Peak indikátor
     uint8_t new_peak_y = y_start;
     if (peak_y[i] == 0 || new_peak_y < peak_y[i])
     {
-      peak_y[i] = new_peak_y;
+      // Start peak slightly above the bar top so the fall is more visible.
+      peak_y[i] = (new_peak_y > 2) ? (new_peak_y - 2) : 0;
+      peak_hold[i] = 10;
     }
     else
     {
-      peak_y[i] += 1;
+      if (peak_hold[i] > 0)
+      {
+        peak_hold[i]--;
+      }
+      else
+      {
+        peak_y[i] += 1;
+      }
       if (peak_y[i] > CANVAS_HEIGHT - 2)
         peak_y[i] = CANVAS_HEIGHT - 2;
     }
@@ -483,36 +1392,136 @@ void draw_fft_level_meter_lvgl(lv_obj_t *canvas)
     lv_draw_rect(&layer, &dsc_peak, &peak_area);
   }
 
+  // Adaptive scale (FFT mode only): fast rise, gentle decay
+  if (!use_vu_fallback && frame_max > fft_auto_max)
+  {
+    fft_auto_max = frame_max;
+  }
+  else if (!use_vu_fallback)
+  {
+    fft_auto_max = (fft_auto_max * 7 + frame_max) / 8;
+  }
+  if (!use_vu_fallback && fft_auto_max < 40)
+    fft_auto_max = 40;
+
   lv_canvas_finish_layer(canvas, &layer);
 }
 
-void audio_process_i2s(int16_t *outBuff, int32_t validSamples, bool *continueI2S)
+void debug_canvas_heartbeat()
+{
+#if DEBUG_CANVAS_HEARTBEAT
+  static unsigned long lastBeat = 0;
+  static bool phase = false;
+  unsigned long now = millis();
+
+  if (!canvas)
+    return;
+
+  if (now - lastBeat >= 300)
+  {
+    lastBeat = now;
+    phase = !phase;
+    lv_color_t c = phase ? lv_color_make(20, 120, 255) : lv_color_make(255, 60, 40);
+    lv_canvas_fill_bg(canvas, c, LV_OPA_COVER);
+    lv_obj_invalidate(canvas);
+  }
+#endif
+}
+
+static inline void fft_push_mono_sample(float mono)
 {
   static float previous_sample = 0;
   static constexpr float alpha = 0.2f;
-  static constexpr float gain = 1.5f;
+  static constexpr float gain = 1.0f;
 
-  for (uint16_t i = 0; i < validSamples * 2; i += 2)
+  float filtered = previous_sample + alpha * (mono - previous_sample);
+  previous_sample = filtered;
+
+  int32_t processed = (int32_t)(filtered * gain);
+  if (processed > 32767)
+    processed = 32767;
+  if (processed < -32768)
+    processed = -32768;
+
+  if (fft_index < FFT_SIZE * 2)
   {
-    float mono = (outBuff[i] + outBuff[i + 1]) * 0.5f;
-    float filtered = previous_sample + alpha * (mono - previous_sample);
-    previous_sample = filtered;
-    int16_t processed = (int16_t)(filtered * gain);
+    fft_buffer[fft_index++] = (int16_t)processed;
+  }
+}
 
-    if (fft_index < FFT_SIZE * 2)
-    {
-      fft_buffer[fft_index++] = processed;
-    }
+static inline void fft_process_from_int32_stereo(int32_t *outBuff, int32_t validSamples)
+{
+  int32_t maxAbs = 1;
+  for (int32_t i = 0; i < validSamples; i++)
+  {
+    int32_t monoRaw = (outBuff[i * 2] + outBuff[i * 2 + 1]) / 2;
+    int32_t a = abs(monoRaw);
+    if (a > maxAbs)
+      maxAbs = a;
+  }
+
+  static float normGain = 1.0f;
+  float targetGain = 12000.0f / (float)maxAbs;
+  if (targetGain < 0.05f)
+    targetGain = 0.05f;
+  if (targetGain > 64.0f)
+    targetGain = 64.0f;
+  normGain = normGain * 0.85f + targetGain * 0.15f;
+
+  for (int32_t i = 0; i < validSamples; i++)
+  {
+    float mono = (outBuff[i * 2] + outBuff[i * 2 + 1]) * 0.5f;
+    mono *= normGain;
+    fft_push_mono_sample(mono);
   }
 
   if (fft_index >= FFT_SIZE * 2)
   {
     fft.exec(fft_buffer);
     fft_index = 0;
-    ready_to_fft = true;
+    ready_to_fft.store(true, std::memory_order_release);
+    fft_exec_calls.fetch_add(1, std::memory_order_relaxed);
+  }
+}
+
+static void handle_audio_process_raw_samples(int32_t *outBuff, int32_t validSamples)
+{
+  fft_raw_active.store(true, std::memory_order_relaxed);
+  fft_raw_calls.fetch_add(1, std::memory_order_relaxed);
+  fft_cb_calls.fetch_add(1, std::memory_order_relaxed);
+
+  fft_process_from_int32_stereo(outBuff, validSamples);
+}
+
+static void handle_audio_process_i2s(int32_t *outBuff, int32_t validSamples, bool *continueI2S)
+{
+  fft_i2s_calls.fetch_add(1, std::memory_order_relaxed);
+  if (fft_raw_active.load(std::memory_order_relaxed))
+  {
+    *continueI2S = true;
+    return;
   }
 
+  fft_cb_calls.fetch_add(1, std::memory_order_relaxed);
+  fft_process_from_int32_stereo(outBuff, validSamples);
+
   *continueI2S = true;
+}
+
+// Force exact symbol names of ESP32-audioI2S weak callbacks (C++ mangled):
+// _Z25audio_process_raw_samplesPls  -> void audio_process_raw_samples(long*, short)
+// _Z17audio_process_i2sPlsPb       -> void audio_process_i2s(long*, short, bool*)
+extern "C" void audio_process_raw_samples_bridge(long *outBuff, short validSamples) asm("_Z25audio_process_raw_samplesPls");
+extern "C" void audio_process_i2s_bridge(long *outBuff, short validSamples, bool *continueI2S) asm("_Z17audio_process_i2sPlsPb");
+
+extern "C" void audio_process_raw_samples_bridge(long *outBuff, short validSamples)
+{
+  handle_audio_process_raw_samples(reinterpret_cast<int32_t *>(outBuff), (int32_t)validSamples);
+}
+
+extern "C" void audio_process_i2s_bridge(long *outBuff, short validSamples, bool *continueI2S)
+{
+  handle_audio_process_i2s(reinterpret_cast<int32_t *>(outBuff), (int32_t)validSamples, continueI2S);
 }
 
 void printLocalTime()
@@ -533,6 +1542,83 @@ void timeavailable(struct timeval *t)
   printLocalTime();
 }
 
+static void setLabelTextAutoScroll(lv_obj_t *label, const char *text)
+{
+  if (!label)
+    return;
+
+  if (!text)
+    text = "";
+
+  lv_obj_t *parent = lv_obj_get_parent(label);
+  lv_coord_t max_w = lv_obj_get_width(label);
+  if (parent)
+  {
+    lv_coord_t parent_w = lv_obj_get_content_width(parent);
+    if (parent_w > 8)
+      max_w = parent_w - 8;
+  }
+  if (max_w <= 0)
+    max_w = 100;
+
+  // Important: scrolling needs a constrained label width (not LV_SIZE_CONTENT).
+  lv_obj_set_width(label, max_w);
+  // Keep text centered in the bounded label area.
+  lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+
+  const lv_font_t *font = (const lv_font_t *)lv_obj_get_style_text_font(label, LV_PART_MAIN);
+  lv_point_t size;
+  lv_text_get_size(&size, text, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+
+  Serial.printf("[LBL] text_px=%d content_w=%d obj_w=%d text_len=%d\n",
+                (int)size.x,
+                (int)lv_obj_get_content_width(label),
+                (int)lv_obj_get_width(label),
+                (int)strlen(text));
+
+  if (size.x > max_w)
+  {
+    // Scroll left-right for long titles.
+    lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
+    lv_obj_set_style_anim_duration(label, 5000, LV_PART_MAIN);
+    Serial.println("[LBL] mode=SCROLL");
+  }
+  else
+  {
+    lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
+    Serial.println("[LBL] mode=CLIP");
+  }
+
+  lv_label_set_text(label, text);
+}
+
+static void processPendingLabelUpdates()
+{
+  char stationLocal[192] = {0};
+  char titleLocal[512] = {0};
+  bool doStation = false;
+  bool doTitle = false;
+
+  if (pendingStationUpdate.exchange(false, std::memory_order_acq_rel))
+  {
+    std::lock_guard<std::mutex> lock(uiTextMutex);
+    strncpy(stationLocal, pendingStationText, sizeof(stationLocal) - 1);
+    doStation = true;
+  }
+
+  if (pendingTitleUpdate.exchange(false, std::memory_order_acq_rel))
+  {
+    std::lock_guard<std::mutex> lock(uiTextMutex);
+    strncpy(titleLocal, pendingTitleText, sizeof(titleLocal) - 1);
+    doTitle = true;
+  }
+
+  if (doStation)
+    setLabelTextAutoScroll(ui_LblStation, stationLocal);
+  if (doTitle)
+    setLabelTextAutoScroll(ui_LblCurPlaying, titleLocal);
+}
+
 // Print station info
 void my_audio_info(Audio::msg_t m)
 {
@@ -541,11 +1627,21 @@ void my_audio_info(Audio::msg_t m)
   {
   case Audio::evt_name:
     Serial.printf("station name: %s\n", m.msg);
-    lv_label_set_text(ui_LblStation, m.msg);
+    {
+      std::lock_guard<std::mutex> lock(uiTextMutex);
+      strncpy(pendingStationText, m.msg ? m.msg : "", sizeof(pendingStationText) - 1);
+      pendingStationText[sizeof(pendingStationText) - 1] = '\0';
+      pendingStationUpdate.store(true, std::memory_order_release);
+    }
     break;
   case Audio::evt_streamtitle:
     Serial.printf("stream title: %s\n", m.msg);
-    lv_label_set_text(ui_LblCurPlaying, m.msg);
+    {
+      std::lock_guard<std::mutex> lock(uiTextMutex);
+      strncpy(pendingTitleText, m.msg ? m.msg : "", sizeof(pendingTitleText) - 1);
+      pendingTitleText[sizeof(pendingTitleText) - 1] = '\0';
+      pendingTitleUpdate.store(true, std::memory_order_release);
+    }
     break;
   }
 }
@@ -578,27 +1674,26 @@ void connecting_animation(lv_timer_t *timer)
 
 void connectToWiFi()
 {
-
-  // 1) Zkontrolujeme, jestli v NVS existují uložené údaje
-  if (!wifiCredentialsStored())
-  {
-    Serial.println("No WiFi credentials → launching WiFiManager");
-
-    lv_scr_load(ui_ScrWiFiManager);
-
-    wm.autoConnect("MusicPlayerAP", "password");
-
-    return; // po konfiguraci WiFiManager sám uloží data do NVS
-  }
-
   // 2) Spustíme boot screen + animaci
-  lv_scr_load(ui_ScrBoot);
+  //lv_scr_load(ui_ScrBoot);
   lv_label_set_text(ui_LblInfo, "Connecting");
 
   connecting_timer = lv_timer_create(connecting_animation, 400, NULL);
+  
+  // // 1) Zkontrolujeme, jestli v NVS existují uložené údaje
+  // if (!wifiCredentialsStored())
+  // {
+  //   Serial.println("No WiFi credentials → launching WiFiManager");
+
+  //   lv_scr_load(ui_ScrWiFiManager);
+
+  //   wm.autoConnect("MusicPlayerAP", "password");
+
+  //   return; // po konfiguraci WiFiManager sám uloží data do NVS
+  // }
 
   WiFi.mode(WIFI_STA);
-  WiFi.begin();
+  WiFi.begin(SECRET_SSID,SECRET_PASSWORD);
 
   uint32_t start = millis();
   const uint32_t timeout = 8000;
@@ -682,6 +1777,9 @@ void syncTime()
   minutes = timeinfo.tm_min;
   sec = timeinfo.tm_sec;
 
+  // Start 1-second software tick from current runtime point.
+  targetCountTime = millis() + 1000;
+
   Serial.println("");
   printLocalTime();
 }
@@ -713,10 +1811,16 @@ void displaySetup()
 #if defined(DIRECT_MODE) && (defined(CANVAS) || defined(RGB_PANEL))
   disp_draw_buf = (lv_color_t *)gfx->getFramebuffer();
 #else  // !(defined(DIRECT_MODE) && (defined(CANVAS) || defined(RGB_PANEL)))
-  disp_draw_buf = (lv_color_t *)heap_caps_malloc(bufSize * 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  // Prefer PSRAM for LVGL draw buffer to keep internal heap free for TLS.
+  disp_draw_buf = (lv_color_t *)heap_caps_malloc(bufSize * 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!disp_draw_buf)
   {
-    // remove MALLOC_CAP_INTERNAL flag try again
+    Serial.println("LVGL draw buffer PSRAM alloc failed, trying internal RAM...");
+    disp_draw_buf = (lv_color_t *)heap_caps_malloc(bufSize * 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  }
+  if (!disp_draw_buf)
+  {
+    // Last fallback: any 8-bit capable RAM.
     disp_draw_buf = (lv_color_t *)heap_caps_malloc(bufSize * 2, MALLOC_CAP_8BIT);
   }
 #endif // !(defined(DIRECT_MODE) && (defined(CANVAS) || defined(RGB_PANEL)))
@@ -751,13 +1855,19 @@ void setup()
   digitalWrite(GFX_BL, HIGH);
 #endif
 
-  Serial.println("Arduino_GFX LVGL_Arduino_v9 example ");
-  String LVGL_Arduino = String('V') + lv_version_major() + "." + lv_version_minor() + "." + lv_version_patch();
-  Serial.println(LVGL_Arduino);
+  String LVGL_version = String('V') + lv_version_major() + "." + lv_version_minor() + "." + lv_version_patch();
+  Serial.println(LVGL_version);
+
+  Serial.printf("PSRAM: %d bytes\n", ESP.getPsramSize());
+Serial.printf("Free PSRAM: %d bytes\n", ESP.getFreePsram());
+
 
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
 
-  // Volume (0-21)
+  // Keep volume scale consistent across audio library versions.
+  audio.setVolumeSteps(21);
+
+  // Initial volume
   audio.setVolume(7);
 
   encoder.begin();
@@ -780,6 +1890,7 @@ void setup()
   lv_indev_set_read_cb(indev_encoder, encoder_read);
 
   ui_init();
+  ensureModeScreensUi();
 
   connectToWiFi();
   Serial.printf("Connecting to %s ", SECRET_SSID);
@@ -792,7 +1903,7 @@ void setup()
 
   syncTime();
 
-  lv_scr_load(ui_ScrRadioPlayer);
+  //lv_scr_load(ui_ScrRadioPlayer);
 
   // mapping of hw buttons to LVGL buttons
   lvglButtons[0] = ui_Button1;
@@ -801,27 +1912,14 @@ void setup()
   lvglButtons[3] = ui_Button4;
   lvglButtons[4] = ui_Button5;
 
-  for (int i = 0; i < buttonCount; i++)
-  {
-    Serial.print("lvglButtons[");
-    Serial.print(i);
-    Serial.print("] = ");
-
-    if (lvglButtons[i] != nullptr)
-    {
-      Serial.println((uintptr_t)lvglButtons[i], HEX); // vypíše adresu v paměti
-    }
-    else
-    {
-      Serial.println("nullptr"); // tlačítko není přiřazeno
-    }
-  }
-
   lv_obj_add_event_cb(ui_Button1, btn_event_handler, LV_EVENT_ALL, NULL);
   lv_obj_add_event_cb(ui_Button2, btn_event_handler, LV_EVENT_ALL, NULL);
   lv_obj_add_event_cb(ui_Button3, btn_event_handler, LV_EVENT_ALL, NULL);
   lv_obj_add_event_cb(ui_Button4, btn_event_handler, LV_EVENT_ALL, NULL);
   lv_obj_add_event_cb(ui_Button5, btn_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button6, mode_button_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button7, mode_button_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button8, mode_button_event_handler, LV_EVENT_ALL, NULL);
 
   LV_DRAW_BUF_DEFINE_STATIC(canvas_buf, CANVAS_WIDTH, CANVAS_HEIGHT, LV_COLOR_FORMAT_RGB565);
   LV_DRAW_BUF_INIT_STATIC(canvas_buf);
@@ -831,15 +1929,15 @@ void setup()
   lv_canvas_set_draw_buf(canvas, &canvas_buf);
   lv_obj_set_parent(canvas, ui_CntnrRadio);
   lv_obj_align(canvas, LV_ALIGN_BOTTOM_MID, 0, -5);
-  lv_obj_move_background(canvas);
+  lv_obj_move_foreground(canvas);
   lv_canvas_fill_bg(canvas, lv_color_black(), LV_OPA_TRANSP);
 
   lv_layer_t layer;
   lv_canvas_init_layer(canvas, &layer);
   lv_canvas_finish_layer(canvas, &layer);
 
-  char numberMin[2], numberHrs[2];
-  char numberDate[9];
+  char numberMin[3], numberHrs[3];
+  char numberDate[11];
   sprintf(numberDate, "%02d.%02d.%04d", day, month, year);
   lv_label_set_text(ui_LblDate, numberDate);
   sprintf(numberMin, "%02d", minutes);
@@ -847,7 +1945,20 @@ void setup()
   sprintf(numberHrs, "%02d", hour);
   lv_label_set_text(ui_LblHrs, numberHrs);
 
-  connectToStation(currentStation);
+  uint8_t station = loadStation();
+
+  lv_obj_t *restoredButton = getStationButton(station);
+  if (restoredButton != nullptr)
+  {
+    lv_obj_send_event(restoredButton, LV_EVENT_CLICKED, NULL);
+  }
+  else
+  {
+    connectToStation(station);
+  }
+  currentStation = station;
+
+  setPlayerMode(MODE_RADIO);
 
   Serial.println("Setup done");
 }
@@ -856,19 +1967,41 @@ void loop()
 {
 
   audio.loop();
+  wm.process();
 
-  if (ready_to_fft)
+  processPendingLabelUpdates();
+
+  debug_canvas_heartbeat();
+
+  static unsigned long last_update = 0;
+  const unsigned long update_interval = 33; // ms (~30 FPS)
+  if (playerMode == MODE_RADIO && millis() - last_update >= update_interval)
   {
-    ready_to_fft = false;
-    static unsigned long last_update = 0;
-    const unsigned long update_interval = 100; // ms
-
-    if (millis() - last_update >= update_interval)
+    last_update = millis();
+    if (ready_to_fft.exchange(false, std::memory_order_acq_rel))
     {
-      last_update = millis();
-      draw_fft_level_meter_lvgl(canvas);
     }
+    draw_fft_level_meter_lvgl(canvas);
   }
+
+#if FFT_DEBUG_LOG
+  static unsigned long last_fft_debug = 0;
+  if (millis() - last_fft_debug >= 1000)
+  {
+    last_fft_debug = millis();
+    uint16_t vu = audio.getVUlevel();
+    Serial.printf("FFT dbg: cb=%lu exec=%lu raw=%lu i2s=%lu vuL=%u vuR=%u autoMax=%lu bin1=%lu\n",
+                  (unsigned long)fft_cb_calls.load(std::memory_order_relaxed),
+                  (unsigned long)fft_exec_calls.load(std::memory_order_relaxed),
+                  (unsigned long)fft_raw_calls.load(std::memory_order_relaxed),
+                  (unsigned long)fft_i2s_calls.load(std::memory_order_relaxed),
+                  (unsigned int)(vu & 0xFF),
+                  (unsigned int)((vu >> 8) & 0xFF),
+                  (unsigned long)fft_auto_max,
+                  (unsigned long)fft.get(1));
+  }
+#endif
+
   readVolumeValue();
   lv_task_handler(); /* let the GUI do its work */
   processButtons();

@@ -2,6 +2,9 @@
  * Extract from:
  * https://github.com/m5stack/M5Unified/blob/master/examples/Advanced/MP3_with_ESP8266Audio/MP3_with_ESP8266Audio.ino
  */
+#ifdef FFT_SIZE
+#undef FFT_SIZE
+#endif
 #define FFT_SIZE 512
 class fft_t
 {
