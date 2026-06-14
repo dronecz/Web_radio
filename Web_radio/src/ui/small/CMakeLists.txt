@@ -10,6 +10,16 @@ SET(SOURCES ui_ScrBoot.c
     ui_img_weather_icons_dovora_interactive_128px_day_clear_png.c
     ui_img_weather_icons_dovora_interactive_128px_cloudy_png.c
     ui_img_indicator_hor_small_png.c
+    ui_img_wifi_png.c
+    ui_img_wifi_75_png.c
+    ui_img_wifi_50_png.c
+    ui_img_wifi_25_png.c
+    ui_img_194650559.c
+    ui_img_backward_png.c
+    ui_img_pause_png.c
+    ui_img_play_png.c
+    ui_img_forward_png.c
+    ui_img_194652857.c
     fonts/ui_font_Roboto_Reg_10.c
     fonts/ui_font_Roboto_Reg_12.c
     fonts/ui_font_Roboto_Reg_14.c

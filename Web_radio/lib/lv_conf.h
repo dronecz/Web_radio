@@ -1024,7 +1024,7 @@
 #define LV_USE_LINUX_DRM        0
 
 /*Interface for TFT_eSPI*/
-#define LV_USE_TFT_ESPI         1
+#define LV_USE_TFT_ESPI         0
 
 /*Driver for evdev input devices*/
 #define LV_USE_EVDEV    0

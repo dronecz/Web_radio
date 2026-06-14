@@ -44,6 +44,7 @@ Sketch settings for ESP32-S3 Dev module:
 #endif
 
 #include <WiFi.h>
+#include <ArduinoOTA.h>
 #include <SD.h>
 #include <SPI.h>
 #include <HTTPClient.h>
@@ -52,12 +53,13 @@ Sketch settings for ESP32-S3 Dev module:
 #include "time.h"
 #include "esp_sntp.h"
 #include "esp_wifi.h"
+#include "esp_ota_ops.h"
 #include "stations.h"
 #include <vector>
 #include <algorithm>
 #include <functional>
 
-EncoderRead encoder(14, 21, 46); // PinA, PinB, Button
+EncoderRead encoder(21, 14, 46); // PinA, PinB, Button
 
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;
@@ -197,10 +199,17 @@ extern lv_obj_t *ui_Button5;
 const uint8_t numOfStations = 5;
 
 std::vector<String> sdTracks;
+std::vector<String> sdFolders;
 int currentSdTrack = 0;
+int currentSdFolder = 0;
 bool sdInitialized = false;
 bool sdScanned = false;
 bool sdSpiInitialized = false;
+bool sdTrackLoaded = false;
+bool sdPlaybackPaused = false;
+bool sdWasRunning = false;
+unsigned long sdTrackStartMs = 0;
+bool otaInitialized = false;
 
 // Shared SPI bus with display wiring:
 // MOSI=11, MISO=13, SCK=12, SD CS=2
@@ -239,6 +248,14 @@ String jellyfinUserId;
 #define SECRET_JELLYFIN_USER_ID ""
 #endif
 
+#ifndef SECRET_OTA_HOSTNAME
+#define SECRET_OTA_HOSTNAME "web-radio"
+#endif
+
+#ifndef SECRET_OTA_PASSWORD
+#define SECRET_OTA_PASSWORD ""
+#endif
+
 static lv_obj_t *ui_ModeMusicTitle = nullptr;
 static lv_obj_t *ui_ModeMusicInfo = nullptr;
 static lv_obj_t *ui_ModeNetworkTitle = nullptr;
@@ -249,8 +266,11 @@ static bool encoderLongPressHandled = false;
 static unsigned long encoderPressStart = 0;
 static const unsigned long encoderShortPressMinMs = 40;
 static const unsigned long encoderLongPressMs = 700;
+static unsigned long lastWifiSignalCheck = 0;
 static int modeMenuSelection = 0; // 0: Radio, 1: MP3, 2: Jellyfin
 static int32_t encoderLastCounter = 0;
+
+void connectToStation(uint8_t station);
 
 static lv_obj_t *getStationButton(uint8_t station)
 {
@@ -269,6 +289,177 @@ static lv_obj_t *getStationButton(uint8_t station)
   default:
     return nullptr;
   }
+}
+
+static String getFolderFromPath(const String &path)
+{
+  int slash = path.lastIndexOf('/');
+  if (slash <= 0)
+    return String("/");
+  return path.substring(0, slash);
+}
+
+static void updateSdFolderButtonsState()
+{
+  if (!ui_Button14 || !ui_Button12)
+    return;
+
+  const int folderCount = (int)sdFolders.size();
+  const bool hasPrevFolder = (folderCount > 0) && (currentSdFolder > 0);
+  const bool hasNextFolder = (folderCount > 0) && (currentSdFolder < (folderCount - 1));
+
+  if (hasPrevFolder)
+    lv_obj_clear_state(ui_Button14, LV_STATE_CHECKED);
+  else
+    lv_obj_add_state(ui_Button14, LV_STATE_CHECKED);
+
+  if (hasNextFolder)
+    lv_obj_clear_state(ui_Button12, LV_STATE_CHECKED);
+  else
+    lv_obj_add_state(ui_Button12, LV_STATE_CHECKED);
+}
+
+static void updateSdPlayPauseVisual()
+{
+  if (!ui_Image1 || !ui_Image2)
+    return;
+
+  const bool showPlay = !sdTrackLoaded || sdPlaybackPaused;
+  if (showPlay)
+  {
+    lv_obj_add_flag(ui_Image1, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_Image2, LV_OBJ_FLAG_HIDDEN);
+  }
+  else
+  {
+    lv_obj_clear_flag(ui_Image1, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_Image2, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
+static void updateSdPlayTimeSlider()
+{
+  auto setTimeLabels = [](uint32_t currentSec, uint32_t durationSec, bool showPlaceholder)
+  {
+    if (showPlaceholder)
+    {
+      if (ui_LblCurPlayedTime)
+        lv_label_set_text(ui_LblCurPlayedTime, "--:--");
+      if (ui_LblSongDuration)
+        lv_label_set_text(ui_LblSongDuration, "--:--");
+      return;
+    }
+
+    char curBuf[12];
+    char durBuf[12];
+
+    uint32_t curMin = currentSec / 60;
+    uint32_t curRem = currentSec % 60;
+    uint32_t durMin = durationSec / 60;
+    uint32_t durRem = durationSec % 60;
+
+    snprintf(curBuf, sizeof(curBuf), "%02lu:%02lu", (unsigned long)curMin, (unsigned long)curRem);
+    snprintf(durBuf, sizeof(durBuf), "%02lu:%02lu", (unsigned long)durMin, (unsigned long)durRem);
+
+    if (ui_LblCurPlayedTime)
+      lv_label_set_text(ui_LblCurPlayedTime, curBuf);
+    if (ui_LblSongDuration)
+      lv_label_set_text(ui_LblSongDuration, durBuf);
+  };
+
+  if (!ui_SliderPlayTime)
+  {
+    setTimeLabels(0, 0, true);
+    return;
+  }
+
+  if (!sdTrackLoaded)
+  {
+    lv_slider_set_range(ui_SliderPlayTime, 0, 100);
+    lv_slider_set_value(ui_SliderPlayTime, 0, LV_ANIM_OFF);
+    setTimeLabels(0, 0, true);
+    return;
+  }
+
+  uint32_t duration = audio.getAudioFileDuration();
+  uint32_t current = audio.getAudioCurrentTime();
+
+  if (duration == 0)
+  {
+    lv_slider_set_range(ui_SliderPlayTime, 0, 100);
+    lv_slider_set_value(ui_SliderPlayTime, 0, LV_ANIM_OFF);
+    setTimeLabels(current, 0, false);
+    return;
+  }
+
+  if (current > duration)
+    current = duration;
+
+  lv_slider_set_range(ui_SliderPlayTime, 0, (int32_t)duration);
+  lv_slider_set_value(ui_SliderPlayTime, (int32_t)current, LV_ANIM_OFF);
+  setTimeLabels(current, duration, false);
+}
+
+static void rebuildSdFoldersFromTracks()
+{
+  sdFolders.clear();
+  sdFolders.reserve(sdTracks.size());
+
+  String lastFolder;
+  for (const String &path : sdTracks)
+  {
+    String folder = getFolderFromPath(path);
+    if (sdFolders.empty() || folder != lastFolder)
+    {
+      sdFolders.push_back(folder);
+      lastFolder = folder;
+    }
+  }
+
+  if (currentSdTrack >= 0 && currentSdTrack < (int)sdTracks.size())
+  {
+    const String curFolder = getFolderFromPath(sdTracks[currentSdTrack]);
+    currentSdFolder = 0;
+    for (int i = 0; i < (int)sdFolders.size(); i++)
+    {
+      if (sdFolders[i] == curFolder)
+      {
+        currentSdFolder = i;
+        break;
+      }
+    }
+  }
+  else
+  {
+    currentSdFolder = 0;
+  }
+}
+
+static int firstTrackIndexInFolder(int folderIndex)
+{
+  if (folderIndex < 0 || folderIndex >= (int)sdFolders.size())
+    return -1;
+
+  const String &folder = sdFolders[folderIndex];
+  for (int i = 0; i < (int)sdTracks.size(); i++)
+  {
+    if (getFolderFromPath(sdTracks[i]) == folder)
+      return i;
+  }
+  return -1;
+}
+
+static int findNextSdTrackIndex(int currentIndex)
+{
+  if (currentIndex < 0 || currentIndex >= (int)sdTracks.size())
+    return -1;
+
+  if ((currentIndex + 1) >= (int)sdTracks.size())
+    return -1;
+
+  // Tracks are sorted by full path, so this naturally advances inside the folder
+  // and then to the first track in the next folder.
+  return currentIndex + 1;
 }
 
 static inline bool hasAudioExtension(const String &name)
@@ -335,6 +526,97 @@ static int modeToMenuSelection(PlayerMode mode)
   }
 }
 
+static int wifiRssiToPercent(int rssi)
+{
+  // Typical RSSI usable range for WiFi clients: about -100 dBm (weak) to -50 dBm (strong).
+  int percent = 2 * (rssi + 100);
+  if (percent < 0)
+    percent = 0;
+  if (percent > 100)
+    percent = 100;
+  return percent;
+}
+
+static void ensureWiFiIconsVisibleOnActiveScreen()
+{
+  if (!ui_IconWiFi || !ui_IconWiFi75 || !ui_IconWiFi50 || !ui_IconWiFi25)
+    return;
+
+  if (playerMode == MODE_SD_MP3)
+  {
+    lv_obj_add_flag(ui_IconWiFi, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_IconWiFi75, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_IconWiFi50, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_IconWiFi25, LV_OBJ_FLAG_HIDDEN);
+    return;
+  }
+
+  lv_obj_t *active = lv_screen_active();
+  if (!active)
+    return;
+
+  lv_obj_t *icons[4] = {ui_IconWiFi, ui_IconWiFi75, ui_IconWiFi50, ui_IconWiFi25};
+  for (int i = 0; i < 4; i++)
+  {
+    if (lv_obj_get_parent(icons[i]) != active)
+      lv_obj_set_parent(icons[i], active);
+
+    // Keep icon at top-right on every screen.
+    lv_obj_align(icons[i], LV_ALIGN_TOP_RIGHT, -8, 4);
+    lv_obj_move_foreground(icons[i]);
+  }
+}
+
+static void updateWiFiSignalIcon()
+{
+  const lv_style_selector_t wifiStyleSel = (lv_style_selector_t)LV_PART_MAIN;
+
+  ensureWiFiIconsVisibleOnActiveScreen();
+
+  if (!ui_IconWiFi || !ui_IconWiFi75 || !ui_IconWiFi50 || !ui_IconWiFi25)
+    return;
+
+  lv_obj_add_flag(ui_IconWiFi, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ui_IconWiFi75, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ui_IconWiFi50, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ui_IconWiFi25, LV_OBJ_FLAG_HIDDEN);
+
+  // Show WiFi icon only in modes 0 (radio) and 2 (jellyfin).
+  if (playerMode == MODE_SD_MP3)
+  {
+    return;
+  }
+
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    lv_obj_clear_flag(ui_IconWiFi, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_image_recolor(ui_IconWiFi, lv_color_hex(0xFF0000), wifiStyleSel);
+    lv_obj_set_style_image_recolor_opa(ui_IconWiFi, 255, wifiStyleSel);
+    return;
+  }
+
+  // Connected: use normal icon colors (no recolor on full icon).
+  lv_obj_set_style_image_recolor_opa(ui_IconWiFi, 0, wifiStyleSel);
+
+  int strengthPercent = wifiRssiToPercent(WiFi.RSSI());
+  if (strengthPercent > 75)
+  {
+    lv_obj_clear_flag(ui_IconWiFi, LV_OBJ_FLAG_HIDDEN);
+  }
+  else if (strengthPercent > 50)
+  {
+    lv_obj_clear_flag(ui_IconWiFi75, LV_OBJ_FLAG_HIDDEN);
+  }
+  else if (strengthPercent > 25)
+  {
+    lv_obj_clear_flag(ui_IconWiFi50, LV_OBJ_FLAG_HIDDEN);
+  }
+  else
+  {
+    lv_obj_clear_flag(ui_IconWiFi25, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
 static lv_obj_t *getModeMenuButtonBySelection(int sel)
 {
   if (sel == 0)
@@ -392,6 +674,28 @@ static void showModeMenu()
   updateModeMenuSelectionVisual();
   lv_obj_clear_flag(ui_Container6, LV_OBJ_FLAG_HIDDEN);
   lv_obj_move_foreground(ui_Container6);
+}
+
+static void ensureVolumeSliderVisibleOnActiveScreen()
+{
+  if (!ui_SldrVolume)
+    return;
+
+  lv_obj_t *active = lv_screen_active();
+  if (!active)
+    return;
+
+  if (lv_obj_get_parent(ui_SldrVolume) != active)
+  {
+    lv_obj_set_parent(ui_SldrVolume, active);
+  }
+
+  // Keep generated placement while ensuring it is rendered above screen widgets.
+  lv_obj_align(ui_SldrVolume, LV_ALIGN_TOP_MID, 5, 0);
+  lv_obj_move_foreground(ui_SldrVolume);
+
+  // WiFi signal should stay visible even while volume bar is active.
+  ensureWiFiIconsVisibleOnActiveScreen();
 }
 
 static bool jellyfinHttpGet(const String &url, String &response, int &statusCode, bool addToken)
@@ -704,6 +1008,7 @@ static bool initAndScanSD()
     return true;
 
   sdTracks.clear();
+  sdFolders.clear();
   sdScanned = true;
 
   const int maxDepth = 8;
@@ -750,13 +1055,20 @@ static bool initAndScanSD()
   scanDir("/", 0);
 
   std::sort(sdTracks.begin(), sdTracks.end());
+  rebuildSdFoldersFromTracks();
 
   Serial.printf("SD tracks found (recursive): %d\n", (int)sdTracks.size());
   if (sdTracks.empty())
   {
+    sdTrackLoaded = false;
+    sdPlaybackPaused = false;
+    updateSdPlayPauseVisual();
+    updateSdFolderButtonsState();
     setModeInfoLabel(ui_ModeMusicInfo, "No audio files found on SD");
     return false;
   }
+
+  updateSdFolderButtonsState();
   return true;
 }
 
@@ -773,10 +1085,127 @@ static void playSdTrack(int index)
   currentSdTrack = index;
 
   const String &path = sdTracks[currentSdTrack];
+
+  const String folder = getFolderFromPath(path);
+  for (int i = 0; i < (int)sdFolders.size(); i++)
+  {
+    if (sdFolders[i] == folder)
+    {
+      currentSdFolder = i;
+      break;
+    }
+  }
+
   Serial.println("Playing SD: " + path);
   audio.stopSong();
   audio.connecttoFS(SD, path.c_str());
+  sdTrackLoaded = true;
+  sdPlaybackPaused = false;
+  sdTrackStartMs = millis();
+  sdWasRunning = false;
+  updateSdPlayPauseVisual();
+  updateSdPlayTimeSlider();
+  updateSdFolderButtonsState();
   setModeInfoLabel(ui_ModeMusicInfo, path.c_str());
+}
+
+static bool jumpSdFolder(int direction)
+{
+  ensureModeScreensUi();
+  if (!initAndScanSD())
+    return false;
+
+  if (sdFolders.empty())
+  {
+    updateSdFolderButtonsState();
+    return false;
+  }
+
+  int targetFolder = currentSdFolder + direction;
+  if (targetFolder < 0 || targetFolder >= (int)sdFolders.size())
+  {
+    updateSdFolderButtonsState();
+    return false;
+  }
+
+  int trackIndex = firstTrackIndexInFolder(targetFolder);
+  if (trackIndex < 0)
+  {
+    updateSdFolderButtonsState();
+    return false;
+  }
+
+  currentSdFolder = targetFolder;
+  currentSdTrack = trackIndex;
+  updateSdFolderButtonsState();
+
+  if (ui_ModeMusicInfo)
+  {
+    String selected = String("Selected: ") + sdTracks[currentSdTrack];
+    setModeInfoLabel(ui_ModeMusicInfo, selected.c_str());
+  }
+
+  if (!sdTrackLoaded)
+    updateSdPlayTimeSlider();
+
+  return true;
+}
+
+void music_player_button_event_handler(lv_event_t *e)
+{
+  if (lv_event_get_code(e) != LV_EVENT_CLICKED)
+    return;
+
+  if (playerMode != MODE_SD_MP3)
+    return;
+
+  lv_obj_t *btn = (lv_obj_t *)lv_event_get_target(e);
+
+  if (btn == ui_Button9)
+  {
+    if (sdTrackLoaded)
+      playSdTrack(currentSdTrack - 1);
+    return;
+  }
+
+  if (btn == ui_Button10)
+  {
+    ensureModeScreensUi();
+    if (!initAndScanSD())
+      return;
+
+    if (!sdTrackLoaded)
+    {
+      playSdTrack(currentSdTrack);
+      return;
+    }
+
+    audio.pauseResume();
+    sdPlaybackPaused = !sdPlaybackPaused;
+    updateSdPlayPauseVisual();
+    return;
+  }
+
+  if (btn == ui_Button11)
+  {
+    if (sdTrackLoaded)
+      playSdTrack(currentSdTrack + 1);
+    return;
+  }
+
+  if (btn == ui_Button12)
+  {
+    if (!jumpSdFolder(+1))
+      lv_obj_add_state(ui_Button12, LV_STATE_CHECKED);
+    return;
+  }
+
+  if (btn == ui_Button14)
+  {
+    if (!jumpSdFolder(-1))
+      lv_obj_add_state(ui_Button14, LV_STATE_CHECKED);
+    return;
+  }
 }
 
 static void playJellyfinTrack(int index)
@@ -808,6 +1237,18 @@ static void playJellyfinTrack(int index)
 
 static void setPlayerMode(PlayerMode mode)
 {
+  PlayerMode previousMode = playerMode;
+
+  if (previousMode == MODE_SD_MP3 && mode != MODE_SD_MP3)
+  {
+    audio.stopSong();
+    sdTrackLoaded = false;
+    sdPlaybackPaused = false;
+    sdWasRunning = false;
+    updateSdPlayPauseVisual();
+    updateSdPlayTimeSlider();
+  }
+
   playerMode = mode;
   modeMenuSelection = modeToMenuSelection(playerMode);
   updateModeMenuSelectionVisual();
@@ -818,13 +1259,26 @@ static void setPlayerMode(PlayerMode mode)
   {
   case MODE_RADIO:
     lv_scr_load(ui_ScrRadioPlayer);
+    ensureVolumeSliderVisibleOnActiveScreen();
+    if (previousMode != MODE_RADIO)
+    {
+      lv_obj_t *stationBtn = getStationButton(currentStation);
+      if (stationBtn)
+      {
+        lv_obj_send_event(stationBtn, LV_EVENT_CLICKED, NULL);
+      }
+    }
     break;
   case MODE_SD_MP3:
     lv_scr_load(ui_ScrMusicPlayer);
+    ensureVolumeSliderVisibleOnActiveScreen();
+    updateSdPlayPauseVisual();
+    updateSdFolderButtonsState();
     playSdTrack(currentSdTrack);
     break;
   case MODE_JELLYFIN:
     lv_scr_load(ui_ScrNetworkPlayer);
+    ensureVolumeSliderVisibleOnActiveScreen();
     playJellyfinTrack(currentJellyfinTrack);
     break;
   }
@@ -949,6 +1403,17 @@ void processButtons()
         if (currentStates[i] == LOW)
         {
           activeButton = i;
+
+          if (playerMode == MODE_SD_MP3)
+          {
+            lv_obj_t *musicButtons[buttonCount] = {ui_Button14, ui_Button9, ui_Button10, ui_Button11, ui_Button12};
+            lv_obj_t *target = musicButtons[i];
+            if (target)
+              lv_obj_send_event(target, LV_EVENT_CLICKED, NULL);
+
+            previousStates[i] = reading;
+            continue;
+          }
 
           if (playerMode != MODE_RADIO)
           {
@@ -1171,6 +1636,7 @@ void readVolumeValue()
 
   if (abs(volume - lastSliderValue) >= changeTreshold)
   {
+    ensureVolumeSliderVisibleOnActiveScreen();
     lv_obj_set_style_opa(ui_SldrVolume, LV_OPA_100, 0);
     lv_slider_set_value(ui_SldrVolume, volume, LV_ANIM_OFF);
     lastSliderValue = volume;
@@ -1672,6 +2138,50 @@ void connecting_animation(lv_timer_t *timer)
   lv_label_set_text(ui_LblInfo, buff);
 }
 
+static void setupOtaUpdate()
+{
+  if (otaInitialized)
+    return;
+
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.println("OTA not started: WiFi not connected");
+    return;
+  }
+
+  const esp_partition_t *nextUpdatePart = esp_ota_get_next_update_partition(NULL);
+  if (!nextUpdatePart)
+  {
+    Serial.println("OTA not available: no OTA update partition found");
+    return;
+  }
+
+  ArduinoOTA.setHostname(SECRET_OTA_HOSTNAME);
+  if (strlen(SECRET_OTA_PASSWORD) > 0)
+    ArduinoOTA.setPassword(SECRET_OTA_PASSWORD);
+
+  ArduinoOTA.onStart([]() {
+    Serial.println("OTA start");
+  });
+
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nOTA end");
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    if (total > 0)
+      Serial.printf("OTA progress: %u%%\r", (progress * 100U) / total);
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("OTA error[%u]\n", (unsigned int)error);
+  });
+
+  ArduinoOTA.begin();
+  otaInitialized = true;
+  Serial.printf("OTA ready: %s.local\n", SECRET_OTA_HOSTNAME);
+}
+
 void connectToWiFi()
 {
   // 2) Spustíme boot screen + animaci
@@ -1893,6 +2403,7 @@ Serial.printf("Free PSRAM: %d bytes\n", ESP.getFreePsram());
   ensureModeScreensUi();
 
   connectToWiFi();
+  setupOtaUpdate();
   Serial.printf("Connecting to %s ", SECRET_SSID);
 
   // WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
@@ -1920,6 +2431,11 @@ Serial.printf("Free PSRAM: %d bytes\n", ESP.getFreePsram());
   lv_obj_add_event_cb(ui_Button6, mode_button_event_handler, LV_EVENT_ALL, NULL);
   lv_obj_add_event_cb(ui_Button7, mode_button_event_handler, LV_EVENT_ALL, NULL);
   lv_obj_add_event_cb(ui_Button8, mode_button_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button9, music_player_button_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button10, music_player_button_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button11, music_player_button_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button12, music_player_button_event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_add_event_cb(ui_Button14, music_player_button_event_handler, LV_EVENT_ALL, NULL);
 
   LV_DRAW_BUF_DEFINE_STATIC(canvas_buf, CANVAS_WIDTH, CANVAS_HEIGHT, LV_COLOR_FORMAT_RGB565);
   LV_DRAW_BUF_INIT_STATIC(canvas_buf);
@@ -1959,6 +2475,7 @@ Serial.printf("Free PSRAM: %d bytes\n", ESP.getFreePsram());
   currentStation = station;
 
   setPlayerMode(MODE_RADIO);
+  updateWiFiSignalIcon();
 
   Serial.println("Setup done");
 }
@@ -1969,7 +2486,23 @@ void loop()
   audio.loop();
   wm.process();
 
+  if (!otaInitialized)
+  {
+    setupOtaUpdate();
+  }
+  if (otaInitialized)
+  {
+    ArduinoOTA.handle();
+  }
+
   processPendingLabelUpdates();
+
+  unsigned long now = millis();
+  if ((now - lastWifiSignalCheck) >= 5000)
+  {
+    lastWifiSignalCheck = now;
+    updateWiFiSignalIcon();
+  }
 
   debug_canvas_heartbeat();
 
@@ -1982,6 +2515,37 @@ void loop()
     {
     }
     draw_fft_level_meter_lvgl(canvas);
+  }
+
+  if (playerMode == MODE_SD_MP3)
+  {
+    updateSdPlayTimeSlider();
+
+    bool running = audio.isRunning();
+    const unsigned long sdAutoplayGraceMs = 1500;
+    if (sdTrackLoaded && !sdPlaybackPaused && sdWasRunning && !running &&
+        (millis() - sdTrackStartMs) > sdAutoplayGraceMs)
+    {
+      int nextTrack = findNextSdTrackIndex(currentSdTrack);
+      if (nextTrack >= 0)
+      {
+        playSdTrack(nextTrack);
+        running = audio.isRunning();
+      }
+      else
+      {
+        sdTrackLoaded = false;
+        sdPlaybackPaused = false;
+        updateSdPlayPauseVisual();
+        updateSdPlayTimeSlider();
+      }
+    }
+
+    sdWasRunning = running;
+  }
+  else
+  {
+    sdWasRunning = false;
   }
 
 #if FFT_DEBUG_LOG
