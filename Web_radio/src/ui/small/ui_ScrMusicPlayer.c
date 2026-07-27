@@ -24,6 +24,29 @@ lv_obj_t * ui_SliderPlayTime = NULL;
 lv_obj_t * ui_LblCurPlayedTime = NULL;
 lv_obj_t * ui_LblSongDuration = NULL;
 // event funtions
+void ui_event_Button9(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+
+    if(event_code == LV_EVENT_PRESSED) {
+        _ui_state_modify(ui_Image4, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
+    }
+    if(event_code == LV_EVENT_RELEASED) {
+        _ui_state_modify(ui_Image4, LV_STATE_CHECKED, _UI_MODIFY_STATE_REMOVE);
+    }
+}
+
+void ui_event_Button11(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+
+    if(event_code == LV_EVENT_PRESSED) {
+        _ui_state_modify(ui_Image3, LV_STATE_CHECKED, _UI_MODIFY_STATE_ADD);
+    }
+    if(event_code == LV_EVENT_RELEASED) {
+        _ui_state_modify(ui_Image3, LV_STATE_CHECKED, _UI_MODIFY_STATE_REMOVE);
+    }
+}
 
 // build funtions
 
@@ -106,6 +129,8 @@ void ui_ScrMusicPlayer_screen_init(void)
     lv_obj_set_align(ui_Image4, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_Image4, LV_OBJ_FLAG_CLICKABLE);     /// Flags
     lv_obj_remove_flag(ui_Image4, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_image_recolor(ui_Image4, lv_color_hex(0x00FF00), LV_PART_MAIN | LV_STATE_CHECKED);
+    lv_obj_set_style_image_recolor_opa(ui_Image4, 255, LV_PART_MAIN | LV_STATE_CHECKED);
 
     ui_Button10 = lv_button_create(ui_CntnrButtonsPlayer);
     lv_obj_set_height(ui_Button10, 30);
@@ -175,6 +200,8 @@ void ui_ScrMusicPlayer_screen_init(void)
     lv_obj_set_align(ui_Image3, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_Image3, LV_OBJ_FLAG_CLICKABLE);     /// Flags
     lv_obj_remove_flag(ui_Image3, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_image_recolor(ui_Image3, lv_color_hex(0x00FF00), LV_PART_MAIN | LV_STATE_CHECKED);
+    lv_obj_set_style_image_recolor_opa(ui_Image3, 255, LV_PART_MAIN | LV_STATE_CHECKED);
 
     ui_Button12 = lv_button_create(ui_CntnrButtonsPlayer);
     lv_obj_set_height(ui_Button12, 30);
@@ -262,6 +289,8 @@ void ui_ScrMusicPlayer_screen_init(void)
     lv_label_set_text(ui_LblSongDuration, "text");
     lv_obj_set_style_text_font(ui_LblSongDuration, &ui_font_Roboto_Reg_12, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    lv_obj_add_event_cb(ui_Button9, ui_event_Button9, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_Button11, ui_event_Button11, LV_EVENT_ALL, NULL);
     uic_CntnrButtonsPlayer = ui_CntnrButtonsPlayer;
 
 }

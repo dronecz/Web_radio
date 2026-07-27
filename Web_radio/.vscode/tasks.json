@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build small_n8r2",
+			"type": "shell",
+			"command": "C:\\Users\\dronecz\\.platformio\\penv\\Scripts\\platformio.exe",
+			"args": [
+				"run",
+				"--environment",
+				"small_n8r2"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Build small_n8r2 with OTA table",
+			"type": "shell",
+			"command": "C:\\Users\\dronecz\\.platformio\\penv\\Scripts\\platformio.exe",
+			"args": [
+				"run",
+				"--environment",
+				"small_n8r2"
+			],
+			"isBackground": false
+		}
+	]
+}
