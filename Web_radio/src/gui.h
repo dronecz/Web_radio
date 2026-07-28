@@ -29,3 +29,6 @@ void hideModeMenu();
 void showModeMenu();
 lv_obj_t *getModeMenuButtonBySelection(int sel);
 void updateModeMenuSelectionVisual();
+void createSkinMenuUI();
+void updateSkinMenuLabel();
+void cycleSkinUIFromButton(lv_event_t *e);

@@ -3,6 +3,7 @@
 #include "ui_select.h"
 #include "EncoderRead.h"
 #include "Audio.h"
+#include "skin.h"
 #include <Arduino_GFX_Library.h>
 #include "FFT.h"
 #include <WiFi.h>
@@ -70,6 +71,12 @@ static size_t fft_index = 0;
 static std::atomic<uint32_t> fft_cb_calls{0};
 static std::atomic<bool> fft_raw_active{false};
 static uint32_t fft_auto_max = 300;
+
+// Skin menu UI elements
+static lv_obj_t *ui_SkinMenuContainer = nullptr;
+static lv_obj_t *ui_SkinNameLabel = nullptr;
+static lv_obj_t *ui_SkinPrevBtn = nullptr;
+static lv_obj_t *ui_SkinNextBtn = nullptr;
 
 static inline void fft_push_mono_sample(float mono)
 {
@@ -723,4 +730,74 @@ void debug_canvas_heartbeat()
     lv_obj_invalidate(canvas);
   }
 #endif
+}
+
+// ============ Skin Menu UI Functions ============
+
+void cycleSkinUIFromButton(lv_event_t *e)
+{
+  cycleSkin();
+  updateSkinMenuLabel();
+}
+
+void updateSkinMenuLabel()
+{
+  if (!ui_SkinNameLabel)
+    return;
+
+  const char *skin_name = getCurrentSkinName();
+  lv_label_set_text(ui_SkinNameLabel, skin_name);
+}
+
+void createSkinMenuUI()
+{
+  extern lv_obj_t *ui_ScrWiFiManager;
+
+  if (!ui_ScrWiFiManager || ui_SkinMenuContainer)
+    return; // Already created or WiFi manager screen not available
+
+  // Create container for skin menu
+  ui_SkinMenuContainer = lv_obj_create(ui_ScrWiFiManager);
+  lv_obj_set_size(ui_SkinMenuContainer, 300, 60);
+  lv_obj_align(ui_SkinMenuContainer, LV_ALIGN_BOTTOM_MID, 0, -10);
+  lv_obj_set_style_bg_color(ui_SkinMenuContainer, lv_color_hex(0x1A1A1A), LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui_SkinMenuContainer, 2, LV_PART_MAIN);
+  lv_obj_set_style_border_color(ui_SkinMenuContainer, lv_color_hex(0x585858), LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui_SkinMenuContainer, 8, LV_PART_MAIN);
+
+  // Create label to display current skin name
+  ui_SkinNameLabel = lv_label_create(ui_SkinMenuContainer);
+  lv_label_set_text(ui_SkinNameLabel, "Skin:");
+  lv_obj_set_width(ui_SkinNameLabel, 150);
+  lv_obj_align(ui_SkinNameLabel, LV_ALIGN_LEFT_MID, 5, 0);
+  lv_obj_set_style_text_color(ui_SkinNameLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+
+  // Create Previous skin button
+  ui_SkinPrevBtn = lv_button_create(ui_SkinMenuContainer);
+  lv_obj_set_size(ui_SkinPrevBtn, 50, 28);
+  lv_obj_align(ui_SkinPrevBtn, LV_ALIGN_RIGHT_MID, -60, 0);
+  lv_obj_add_event_cb(ui_SkinPrevBtn, cycleSkinUIFromButton, LV_EVENT_CLICKED, NULL);
+  lv_obj_set_style_bg_color(ui_SkinPrevBtn, lv_color_hex(0xDADADA), LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui_SkinPrevBtn, 2, LV_PART_MAIN);
+
+  lv_obj_t *prev_label = lv_label_create(ui_SkinPrevBtn);
+  lv_label_set_text(prev_label, "<");
+  lv_obj_center(prev_label);
+
+  // Create Next skin button
+  ui_SkinNextBtn = lv_button_create(ui_SkinMenuContainer);
+  lv_obj_set_size(ui_SkinNextBtn, 50, 28);
+  lv_obj_align(ui_SkinNextBtn, LV_ALIGN_RIGHT_MID, 0, 0);
+  lv_obj_add_event_cb(ui_SkinNextBtn, cycleSkinUIFromButton, LV_EVENT_CLICKED, NULL);
+  lv_obj_set_style_bg_color(ui_SkinNextBtn, lv_color_hex(0xDADADA), LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui_SkinNextBtn, 2, LV_PART_MAIN);
+
+  lv_obj_t *next_label = lv_label_create(ui_SkinNextBtn);
+  lv_label_set_text(next_label, ">");
+  lv_obj_center(next_label);
+
+  // Update label with current skin name
+  updateSkinMenuLabel();
+
+  Serial.println("[SKIN] Runtime skin menu created on WiFi Manager screen");
 }

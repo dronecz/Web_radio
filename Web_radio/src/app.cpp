@@ -22,6 +22,7 @@
 #include "jellyfin_player.h"
 #include "ui_select.h"
 #include "stations.h"
+#include "skin.h"
 
 static constexpr const char *OTA_HOSTNAME = "web-radio";
 static constexpr const char *OTA_PASSWORD = "";
@@ -262,6 +263,7 @@ void connectToWiFi()
     logBootStep("WiFi connect failed, starting WiFiManager AP");
     lv_label_set_text(ui_LblInfo, "Failed → WiFi Manager");
     lv_scr_load(ui_ScrWiFiManager);
+    createSkinMenuUI();
     delay(800);
     wm.autoConnect("MusicPlayerAP", "password");
 
@@ -400,6 +402,12 @@ void setup()
   ui_init();
   ensureModeScreensUi();
   logBootStep("UI ready");
+
+  // Initialize skin system
+  SkinManager &skin_mgr = SkinManager::instance();
+  skin_mgr.loadSkinPreference();
+  applySkinToUI(skin_mgr.getCurrentSkin());
+  logBootStep("Skin loaded and applied");
 
   connectToWiFi();
   setupOtaUpdate();

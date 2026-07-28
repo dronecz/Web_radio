@@ -59,7 +59,7 @@ Sketch settings for ESP32-S3 Dev module:
 #include <algorithm>
 #include <functional>
 
-EncoderRead encoder(21, 14, 46); // PinA, PinB, Button
+EncoderRead encoder(21, 14, 47); // PinA, PinB, Button
 
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;
