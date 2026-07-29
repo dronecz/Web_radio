@@ -2,7 +2,6 @@
 #include "app_shared.h"
 #include "gui.h"
 #include "ui_select.h"
-#include "arduino_secrets.h"
 #include <Audio.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>

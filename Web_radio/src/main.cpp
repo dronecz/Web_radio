@@ -28,7 +28,6 @@ Sketch settings for ESP32-S3 Dev module:
 
 #include <Arduino.h>
 #include <Arduino_GFX_Library.h>
-#include "arduino_secrets.h"
 #include "Audio.h"
 #include "EncoderRead.h"
 #include <lvgl.h>
@@ -248,13 +247,8 @@ String jellyfinUserId;
 #define SECRET_JELLYFIN_USER_ID ""
 #endif
 
-#ifndef SECRET_OTA_HOSTNAME
-#define SECRET_OTA_HOSTNAME "web-radio"
-#endif
-
-#ifndef SECRET_OTA_PASSWORD
-#define SECRET_OTA_PASSWORD ""
-#endif
+static constexpr const char *OTA_HOSTNAME = "web-radio";
+static constexpr const char *OTA_PASSWORD = "";
 
 static lv_obj_t *ui_ModeMusicTitle = nullptr;
 static lv_obj_t *ui_ModeMusicInfo = nullptr;
@@ -2156,9 +2150,9 @@ static void setupOtaUpdate()
     return;
   }
 
-  ArduinoOTA.setHostname(SECRET_OTA_HOSTNAME);
-  if (strlen(SECRET_OTA_PASSWORD) > 0)
-    ArduinoOTA.setPassword(SECRET_OTA_PASSWORD);
+  ArduinoOTA.setHostname(OTA_HOSTNAME);
+  if (strlen(OTA_PASSWORD) > 0)
+    ArduinoOTA.setPassword(OTA_PASSWORD);
 
   ArduinoOTA.onStart([]() {
     Serial.println("OTA start");
@@ -2179,7 +2173,7 @@ static void setupOtaUpdate()
 
   ArduinoOTA.begin();
   otaInitialized = true;
-  Serial.printf("OTA ready: %s.local\n", SECRET_OTA_HOSTNAME);
+  Serial.printf("OTA ready: %s.local\n", OTA_HOSTNAME);
 }
 
 void connectToWiFi()
@@ -2203,7 +2197,8 @@ void connectToWiFi()
   // }
 
   WiFi.mode(WIFI_STA);
-  WiFi.begin(SECRET_SSID,SECRET_PASSWORD);
+  WiFi.disconnect(true, true);
+  WiFi.begin();
 
   uint32_t start = millis();
   const uint32_t timeout = 8000;
@@ -2404,7 +2399,7 @@ Serial.printf("Free PSRAM: %d bytes\n", ESP.getFreePsram());
 
   connectToWiFi();
   setupOtaUpdate();
-  Serial.printf("Connecting to %s ", SECRET_SSID);
+  Serial.print("Connecting to saved WiFi credentials\n");
 
   // WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
   // while (WiFi.status() != WL_CONNECTED) {

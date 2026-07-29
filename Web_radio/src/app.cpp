@@ -12,7 +12,6 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
-#include "arduino_secrets.h"
 #include "Audio.h"
 #include "EncoderRead.h"
 #include "app_shared.h"
@@ -222,6 +221,41 @@ static uint8_t loadStation()
   return station;
 }
 
+static bool loadSavedWiFiCredentials(String &ssid, String &password)
+{
+  prefs.begin("wifi", true);
+  ssid = prefs.getString("ssid", "");
+  password = prefs.getString("password", "");
+  prefs.end();
+
+  return !ssid.isEmpty() && !password.isEmpty();
+}
+
+static void saveWiFiCredentials(const String &ssid, const String &password)
+{
+  prefs.begin("wifi", false);
+  prefs.putString("ssid", ssid);
+  prefs.putString("password", password);
+  prefs.end();
+}
+
+static bool tryConnectToSavedWiFi(const String &ssid, const String &password)
+{
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect(true, true);
+  WiFi.begin(ssid.c_str(), password.c_str());
+
+  uint32_t start = millis();
+  const uint32_t timeout = 10000;
+  while (WiFi.status() != WL_CONNECTED && millis() - start < timeout)
+  {
+    lv_timer_handler();
+    delay(5);
+  }
+
+  return WiFi.status() == WL_CONNECTED;
+}
+
 void connectToStation(uint8_t station)
 {
   currentStation = station;
@@ -236,23 +270,48 @@ void connectToWiFi()
   lv_label_set_text(ui_LblInfo, "Connecting");
   connecting_timer = lv_timer_create(connecting_animation, 400, NULL);
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(SECRET_SSID, SECRET_PASSWORD);
+  String savedSsid;
+  String savedPassword;
+  const bool hasSavedCredentials = loadSavedWiFiCredentials(savedSsid, savedPassword);
 
-  uint32_t start = millis();
-  const uint32_t timeout = 8000;
-  while (WiFi.status() != WL_CONNECTED && millis() - start < timeout)
+  if (hasSavedCredentials)
   {
-    lv_timer_handler();
-    delay(5);
+    logBootStep("Using saved WiFi credentials from NVS");
+    if (tryConnectToSavedWiFi(savedSsid, savedPassword))
+    {
+      lv_timer_del(connecting_timer);
+      connecting_timer = nullptr;
+      Serial.print("[BOOT] WiFi connected, IP: ");
+      Serial.println(WiFi.localIP());
+      lv_label_set_text(ui_LblInfo, "Connected!");
+      delay(600);
+      lv_scr_load(ui_ScrRadioPlayer);
+      return;
+    }
+
+    logBootStep("Saved WiFi credentials failed, launching WiFiManager portal");
+  }
+  else
+  {
+    logBootStep("No saved WiFi credentials found, launching WiFiManager portal");
   }
 
   lv_timer_del(connecting_timer);
   connecting_timer = nullptr;
 
-  if (WiFi.status() == WL_CONNECTED)
+  lv_label_set_text(ui_LblInfo, "Open setup portal");
+  lv_scr_load(ui_ScrWiFiManager);
+  createSkinMenuUI();
+  delay(800);
+
+  wm.setConfigPortalTimeout(180);
+  wm.setHostname("web-radio");
+  const bool portalConnected = wm.autoConnect("MusicPlayerAP", "password");
+
+  if (portalConnected && WiFi.status() == WL_CONNECTED)
   {
-    Serial.print("[BOOT] WiFi connected, IP: ");
+    saveWiFiCredentials(WiFi.SSID(), WiFi.psk());
+    Serial.print("[BOOT] WiFiManager connected, IP: ");
     Serial.println(WiFi.localIP());
     lv_label_set_text(ui_LblInfo, "Connected!");
     delay(600);
@@ -260,22 +319,8 @@ void connectToWiFi()
   }
   else
   {
-    logBootStep("WiFi connect failed, starting WiFiManager AP");
-    lv_label_set_text(ui_LblInfo, "Failed → WiFi Manager");
-    lv_scr_load(ui_ScrWiFiManager);
-    createSkinMenuUI();
-    delay(800);
-    wm.autoConnect("MusicPlayerAP", "password");
-
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      Serial.print("[BOOT] WiFiManager connected, IP: ");
-      Serial.println(WiFi.localIP());
-    }
-    else
-    {
-      logBootStep("WiFiManager finished without connection");
-    }
+    logBootStep("WiFiManager finished without connection");
+    lv_label_set_text(ui_LblInfo, "WiFi setup pending");
   }
 }
 
