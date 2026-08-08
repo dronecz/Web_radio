@@ -12,6 +12,7 @@
 #include <cmath>
 #include <mutex>
 #include <vector>
+#include "display_config.h"
 
 extern Audio audio;
 extern EncoderRead encoder;
@@ -512,6 +513,11 @@ void displaySetup()
 
   screenWidth = gfx->width();
   screenHeight = gfx->height();
+
+#if DISPLAY_FORCE_RESOLUTION
+  screenWidth = DISPLAY_WIDTH;
+  screenHeight = DISPLAY_HEIGHT;
+#endif
 
 #ifdef DIRECT_MODE
   bufSize = screenWidth * screenHeight;

@@ -22,6 +22,7 @@
 #include "ui_select.h"
 #include "stations.h"
 #include "skin.h"
+#include "display_config.h"
 
 static constexpr const char *OTA_HOSTNAME = "web-radio";
 static constexpr const char *OTA_PASSWORD = "";
@@ -34,13 +35,14 @@ EncoderRead encoder(21, 14, 46);
 #ifdef DISPLAY_DEV_KIT
 Arduino_GFX *gfx = create_default_Arduino_GFX();
 #else
-#define GFX_BL 16
-Arduino_DataBus *bus = new Arduino_ESP32SPI(17, 10, 12, 11, GFX_NOT_DEFINED, FSPI);
-#ifdef small
-Arduino_GFX *gfx = new Arduino_ST7789(bus, 18, 3, true);
-#endif
-#ifdef large
-Arduino_GFX *gfx = new Arduino_ST7796(bus, 18, 1);
+#define GFX_BL DISPLAY_BL_PIN
+Arduino_DataBus *bus = new Arduino_ESP32SPI(DISPLAY_PIN_DC, DISPLAY_PIN_CS, DISPLAY_PIN_SCK, DISPLAY_PIN_MOSI, DISPLAY_PIN_MISO, FSPI);
+#if DISPLAY_DRIVER_ST7789
+Arduino_GFX *gfx = new Arduino_ST7789(bus, DISPLAY_PIN_RST, DISPLAY_ROTATION, DISPLAY_ST7789_IS_IPS);
+#elif DISPLAY_DRIVER_ST7796
+Arduino_GFX *gfx = new Arduino_ST7796(bus, DISPLAY_PIN_RST, DISPLAY_ROTATION);
+#elif DISPLAY_DRIVER_ILI9341
+Arduino_GFX *gfx = new Arduino_ILI9341(bus, DISPLAY_PIN_RST, DISPLAY_ROTATION);
 #endif
 #endif
 
@@ -49,12 +51,6 @@ lv_indev_t *indev_encoder;
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;
 const int daylightOffset_sec = 3600;
-
-uint32_t screenWidth;
-uint32_t screenHeight;
-uint32_t bufSize;
-lv_display_t *disp;
-lv_color_t *disp_draw_buf;
 
 int year = 0, month = 0, day = 0, hour = 0, minutes = 0, sec = 0;
 static unsigned long targetCountTime = 0;
@@ -478,7 +474,7 @@ void setup()
   lv_obj_add_event_cb(ui_Button12, music_player_button_event_handler, LV_EVENT_ALL, NULL);
   lv_obj_add_event_cb(ui_Button14, music_player_button_event_handler, LV_EVENT_ALL, NULL);
 
-  LV_DRAW_BUF_DEFINE_STATIC(canvas_buf, 285, 30, LV_COLOR_FORMAT_RGB565);
+  LV_DRAW_BUF_DEFINE_STATIC(canvas_buf, DISPLAY_CANVAS_WIDTH, DISPLAY_CANVAS_HEIGHT, LV_COLOR_FORMAT_RGB565);
   LV_DRAW_BUF_INIT_STATIC(canvas_buf);
   canvas = lv_canvas_create(lv_screen_active());
   lv_canvas_set_draw_buf(canvas, &canvas_buf);
