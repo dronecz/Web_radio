@@ -20,6 +20,7 @@ ui_img_pause_png.c
 ui_img_play_png.c
 ui_img_forward_png.c
 ui_img_194652857.c
+fonts/ui_font_Roboto_Bold_14.c
 fonts/ui_font_Roboto_Reg_10.c
 fonts/ui_font_Roboto_Reg_12.c
 fonts/ui_font_Roboto_Reg_14.c

@@ -1,0 +1,16 @@
+{
+  "codename": "Roboto_Bold_14",
+  "ttf_path": "/assets/roboto/Roboto-Bold.ttf",
+  "bin_path": "/assets/roboto\\ui_font_Roboto_Bold_14.bin",
+  "c_path": "/assets/roboto\\ui_font_Roboto_Bold_14.c",
+  "cfg_path": "/assets/roboto\\ui_font_Roboto_Bold_14.fcfg",
+  "size": 14,
+  "bpp": 1,
+  "letters": 0,
+  "ranges": [
+    "0x20-0x7f"
+  ],
+  "symbols": "",
+  "customparams": "--no-compress --no-prefilter",
+  "uploaded": false
+}
