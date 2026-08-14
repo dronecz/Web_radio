@@ -37,7 +37,7 @@ void ui_ScrBoot_screen_init(void)
     lv_obj_set_y(ui_LblInfo, 50);
     lv_obj_set_align(ui_LblInfo, LV_ALIGN_CENTER);
     lv_label_set_text(ui_LblInfo, "info text");
-    lv_obj_set_style_text_font(ui_LblInfo, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_LblInfo, &ui_font_Roboto_Reg_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_LblVersion = lv_label_create(ui_ScrBoot);
     lv_obj_set_width(ui_LblVersion, LV_SIZE_CONTENT);   /// 1
@@ -46,7 +46,7 @@ void ui_ScrBoot_screen_init(void)
     lv_obj_set_y(ui_LblVersion, 100);
     lv_obj_set_align(ui_LblVersion, LV_ALIGN_CENTER);
     lv_label_set_text(ui_LblVersion, "fw version");
-    lv_obj_set_style_text_font(ui_LblVersion, &lv_font_montserrat_10, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_LblVersion, &ui_font_Roboto_Reg_10, LV_PART_MAIN | LV_STATE_DEFAULT);
 
 }
 

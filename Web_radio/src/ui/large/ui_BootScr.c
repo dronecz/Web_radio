@@ -35,7 +35,7 @@ void ui_BootScr_screen_init(void)
     lv_obj_set_y(ui_LblVersion, 20);
     lv_obj_set_align(ui_LblVersion, LV_ALIGN_CENTER);
     lv_label_set_text(ui_LblVersion, "V 1.0.0");
-    lv_obj_set_style_text_font(ui_LblVersion, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_LblVersion, &ui_font_Roboto_Reg_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_LblConnection = lv_label_create(ui_BootScr);
     lv_obj_set_width(ui_LblConnection, LV_SIZE_CONTENT);   /// 1

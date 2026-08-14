@@ -72,6 +72,8 @@ static size_t fft_index = 0;
 static std::atomic<uint32_t> fft_cb_calls{0};
 static std::atomic<bool> fft_raw_active{false};
 static uint32_t fft_auto_max = 300;
+static std::atomic<uint8_t> vu_left_level{0};
+static std::atomic<uint8_t> vu_right_level{0};
 
 // Skin menu UI elements
 static lv_obj_t *ui_SkinMenuContainer = nullptr;
@@ -150,16 +152,30 @@ static void handle_audio_process_i2s(int32_t *outBuff, int32_t validSamples, boo
   *continueI2S = true;
 }
 
-// Bind exact weak callback symbols from ESP32-audioI2S.
-extern "C" void audio_process_raw_samples_bridge(long *outBuff, short validSamples) asm("_Z25audio_process_raw_samplesPls");
-extern "C" void audio_process_i2s_bridge(long *outBuff, short validSamples, bool *continueI2S) asm("_Z17audio_process_i2sPlsPb");
+// Bind both legacy and current weak callback symbol names from ESP32-audioI2S.
+// Current API: int32_t* + int16_t  (mangled ...Pis...)
+// Legacy API:  long*    + short    (mangled ...Pls...)
+extern "C" void audio_process_raw_samples_bridge_new(int32_t *outBuff, int16_t validSamples) asm("_Z25audio_process_raw_samplesPis");
+extern "C" void audio_process_i2s_bridge_new(int32_t *outBuff, int16_t validSamples, bool *continueI2S) asm("_Z17audio_process_i2sPisPb");
+extern "C" void audio_process_raw_samples_bridge_old(long *outBuff, short validSamples) asm("_Z25audio_process_raw_samplesPls");
+extern "C" void audio_process_i2s_bridge_old(long *outBuff, short validSamples, bool *continueI2S) asm("_Z17audio_process_i2sPlsPb");
 
-extern "C" void audio_process_raw_samples_bridge(long *outBuff, short validSamples)
+extern "C" void audio_process_raw_samples_bridge_new(int32_t *outBuff, int16_t validSamples)
+{
+  handle_audio_process_raw_samples(outBuff, (int32_t)validSamples);
+}
+
+extern "C" void audio_process_i2s_bridge_new(int32_t *outBuff, int16_t validSamples, bool *continueI2S)
+{
+  handle_audio_process_i2s(outBuff, (int32_t)validSamples, continueI2S);
+}
+
+extern "C" void audio_process_raw_samples_bridge_old(long *outBuff, short validSamples)
 {
   handle_audio_process_raw_samples(reinterpret_cast<int32_t *>(outBuff), (int32_t)validSamples);
 }
 
-extern "C" void audio_process_i2s_bridge(long *outBuff, short validSamples, bool *continueI2S)
+extern "C" void audio_process_i2s_bridge_old(long *outBuff, short validSamples, bool *continueI2S)
 {
   handle_audio_process_i2s(reinterpret_cast<int32_t *>(outBuff), (int32_t)validSamples, continueI2S);
 }
@@ -406,6 +422,13 @@ void my_audio_info(Audio::msg_t m)
       pendingTitleUpdate.store(true, std::memory_order_release);
     }
     break;
+  case Audio::evt_vu:
+    if (m.vec1.size() >= 2)
+    {
+      vu_left_level.store((uint8_t)m.vec1[0], std::memory_order_relaxed);
+      vu_right_level.store((uint8_t)m.vec1[1], std::memory_order_relaxed);
+    }
+    break;
   }
 }
 
@@ -513,8 +536,10 @@ void displaySetup()
 
   screenWidth = gfx->width();
   screenHeight = gfx->height();
+  Serial.printf("[DISP] gfx begin width=%lu height=%lu\n", (unsigned long)screenWidth, (unsigned long)screenHeight);
 
 #if DISPLAY_FORCE_RESOLUTION
+  Serial.printf("[DISP] force resolution enabled width=%d height=%d\n", DISPLAY_WIDTH, DISPLAY_HEIGHT);
   screenWidth = DISPLAY_WIDTH;
   screenHeight = DISPLAY_HEIGHT;
 #endif
@@ -524,6 +549,16 @@ void displaySetup()
 #else
   bufSize = screenWidth * 40;
 #endif
+
+  Serial.printf("[DISP] lv buffer pixels=%lu bytes=%lu mode=%s\n",
+                (unsigned long)bufSize,
+                (unsigned long)(bufSize * 2),
+#ifdef DIRECT_MODE
+                "DIRECT"
+#else
+                "PARTIAL"
+#endif
+  );
 
 #ifdef ESP32
 #if defined(DIRECT_MODE) && (defined(CANVAS) || defined(RGB_PANEL))
@@ -545,6 +580,8 @@ void displaySetup()
     return;
   }
 
+  Serial.printf("[DISP] lv draw buffer ptr=%p\n", (void *)disp_draw_buf);
+
   disp = lv_display_create(screenWidth, screenHeight);
   lv_display_set_flush_cb(disp, my_disp_flush);
 #ifdef DIRECT_MODE
@@ -561,9 +598,8 @@ void draw_fft_level_meter_lvgl(lv_obj_t *canvasObj)
   static uint8_t peak_hold[35] = {0};
   uint32_t frame_max = 1;
   bool use_vu_fallback = (fft_cb_calls.load(std::memory_order_relaxed) == 0);
-  uint16_t vu = audio.getVUlevel();
-  uint8_t vu_l = (uint8_t)(vu & 0xFF);
-  uint8_t vu_r = (uint8_t)((vu >> 8) & 0xFF);
+  uint8_t vu_l = vu_left_level.load(std::memory_order_relaxed);
+  uint8_t vu_r = vu_right_level.load(std::memory_order_relaxed);
   bool use_idle_animation = use_vu_fallback && (vu_l == 0) && (vu_r == 0);
   const int numBars = 35;
   const int canvasW = (int)lv_obj_get_width(canvasObj);

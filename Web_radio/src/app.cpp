@@ -12,6 +12,8 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
+#include <esp_system.h>
+#include <esp_wifi.h>
 #include "Audio.h"
 #include "EncoderRead.h"
 #include "app_shared.h"
@@ -54,6 +56,7 @@ const int daylightOffset_sec = 3600;
 
 int year = 0, month = 0, day = 0, hour = 0, minutes = 0, sec = 0;
 static unsigned long targetCountTime = 0;
+static unsigned long setupDoneAtMs = 0;
 int brightness = 32;
 
 PlayerMode playerMode = MODE_RADIO;
@@ -94,6 +97,57 @@ static void logBootStep(const char *msg)
   Serial.println(msg);
 }
 
+static const char *resetReasonToString(esp_reset_reason_t reason)
+{
+  switch (reason)
+  {
+  case ESP_RST_UNKNOWN: return "UNKNOWN";
+  case ESP_RST_POWERON: return "POWERON";
+  case ESP_RST_EXT: return "EXT";
+  case ESP_RST_SW: return "SW";
+  case ESP_RST_PANIC: return "PANIC";
+  case ESP_RST_INT_WDT: return "INT_WDT";
+  case ESP_RST_TASK_WDT: return "TASK_WDT";
+  case ESP_RST_WDT: return "WDT";
+  case ESP_RST_DEEPSLEEP: return "DEEPSLEEP";
+  case ESP_RST_BROWNOUT: return "BROWNOUT";
+  case ESP_RST_SDIO: return "SDIO";
+  case ESP_RST_USB: return "USB";
+  case ESP_RST_JTAG: return "JTAG";
+  case ESP_RST_EFUSE: return "EFUSE";
+  case ESP_RST_PWR_GLITCH: return "PWR_GLITCH";
+  case ESP_RST_CPU_LOCKUP: return "CPU_LOCKUP";
+  default: return "OTHER";
+  }
+}
+
+static void logScreenState(const char *tag)
+{
+  Serial.printf(
+      "[BOOT] %s active=%p boot=%p radio=%p wifi=%p music=%p net=%p\n",
+      tag,
+      (void *)lv_screen_active(),
+      (void *)ui_ScrBoot,
+      (void *)ui_ScrRadioPlayer,
+      (void *)ui_ScrWiFiManager,
+      (void *)ui_ScrMusicPlayer,
+      (void *)ui_ScrNetworkPlayer);
+}
+
+static void loadScreenAndRefresh(lv_obj_t *screen, const char *tag)
+{
+  if (!screen)
+  {
+    Serial.printf("[BOOT] %s target screen is null\n", tag);
+    return;
+  }
+
+  lv_disp_load_scr(screen);
+  lv_obj_invalidate(screen);
+  lv_refr_now(lv_display_get_default());
+  logScreenState(tag);
+}
+
 void setPlayerMode(PlayerMode mode)
 {
   PlayerMode previousMode = playerMode;
@@ -115,7 +169,7 @@ void setPlayerMode(PlayerMode mode)
   switch (playerMode)
   {
   case MODE_RADIO:
-    lv_scr_load(ui_ScrRadioPlayer);
+    loadScreenAndRefresh(ui_ScrRadioPlayer, "setPlayerMode->RADIO");
     ensureVolumeSliderVisibleOnActiveScreen();
     if (previousMode != MODE_RADIO)
     {
@@ -133,14 +187,14 @@ void setPlayerMode(PlayerMode mode)
     }
     break;
   case MODE_SD_MP3:
-    lv_scr_load(ui_ScrMusicPlayer);
+    loadScreenAndRefresh(ui_ScrMusicPlayer, "setPlayerMode->SD_MP3");
     ensureVolumeSliderVisibleOnActiveScreen();
     updateSdPlayPauseVisual();
     updateSdFolderButtonsState();
     playSdTrack(currentSdTrack);
     break;
   case MODE_JELLYFIN:
-    lv_scr_load(ui_ScrNetworkPlayer);
+    loadScreenAndRefresh(ui_ScrNetworkPlayer, "setPlayerMode->JELLYFIN");
     ensureVolumeSliderVisibleOnActiveScreen();
     playJellyfinTrack(currentJellyfinTrack);
     break;
@@ -238,7 +292,9 @@ static void saveWiFiCredentials(const String &ssid, const String &password)
 static bool tryConnectToSavedWiFi(const String &ssid, const String &password)
 {
   WiFi.mode(WIFI_STA);
-  WiFi.disconnect(true, true);
+  WiFi.setSleep(false);
+  // Lower TX power during boot to reduce current spikes on marginal power rails.
+  WiFi.setTxPower(WIFI_POWER_8_5dBm);
   WiFi.begin(ssid.c_str(), password.c_str());
 
   uint32_t start = millis();
@@ -281,7 +337,7 @@ void connectToWiFi()
       Serial.println(WiFi.localIP());
       lv_label_set_text(ui_LblInfo, "Connected!");
       delay(600);
-      lv_scr_load(ui_ScrRadioPlayer);
+      logBootStep("WiFi ready, deferring radio screen load until mode setup");
       return;
     }
 
@@ -296,7 +352,7 @@ void connectToWiFi()
   connecting_timer = nullptr;
 
   lv_label_set_text(ui_LblInfo, "Open setup portal");
-  lv_scr_load(ui_ScrWiFiManager);
+  loadScreenAndRefresh(ui_ScrWiFiManager, "WiFi portal screen");
   createSkinMenuUI();
   delay(800);
 
@@ -311,7 +367,7 @@ void connectToWiFi()
     Serial.println(WiFi.localIP());
     lv_label_set_text(ui_LblInfo, "Connected!");
     delay(600);
-    lv_scr_load(ui_ScrRadioPlayer);
+    logBootStep("WiFi portal connected, deferring radio screen load until mode setup");
   }
   else
   {
@@ -414,6 +470,8 @@ void setup()
   Audio::audio_info_callback = my_audio_info;
   Serial.begin(115200);
   delay(300);
+  esp_reset_reason_t rr = esp_reset_reason();
+  Serial.printf("[BOOT] reset reason: %d (%s)\n", (int)rr, resetReasonToString(rr));
   logBootStep("setup start");
 
   initButtons();
@@ -425,6 +483,7 @@ void setup()
   audio.setPinout(5, 6, 4);
   audio.setVolumeSteps(21);
   audio.setVolume(7);
+  audio.settings.VU_LEVEL = true;
 
   encoder.begin();
   lv_init();
@@ -443,6 +502,7 @@ void setup()
   ui_init();
   ensureModeScreensUi();
   logBootStep("UI ready");
+  logScreenState("after ui_init");
 
   // Initialize skin system
   SkinManager &skin_mgr = SkinManager::instance();
@@ -494,11 +554,42 @@ void setup()
   connectToStation(station);
   setPlayerMode(MODE_RADIO);
   updateWiFiSignalIcon();
+  setupDoneAtMs = millis();
   logBootStep("setup done");
 }
 
 void loop()
 {
+  // Keep UI rendering responsive even if other subsystems are busy.
+  lv_timer_handler();
+
+  static unsigned long lastUiHeartbeatMs = 0;
+  if ((millis() - lastUiHeartbeatMs) > 500)
+  {
+    lastUiHeartbeatMs = millis();
+    Serial.printf("[UI] loop active=%p mode=%d wifi=%d\n", (void *)lv_screen_active(), (int)playerMode, (int)WiFi.status());
+  }
+
+  // Recovery guard: if boot screen is still active shortly after setup,
+  // force-load the radio screen once.
+  static bool screenRecoveryDone = false;
+  if (!screenRecoveryDone && setupDoneAtMs > 0 && (millis() - setupDoneAtMs) > 1200)
+  {
+    lv_obj_t *active = lv_screen_active();
+    if (active == ui_ScrBoot)
+    {
+      Serial.println("[BOOT] Screen recovery: forcing radio screen load");
+      loadScreenAndRefresh(ui_ScrRadioPlayer, "recovery -> RADIO");
+      ensureVolumeSliderVisibleOnActiveScreen();
+      updateWiFiSignalIcon();
+    }
+    else
+    {
+      logScreenState("recovery check: boot not active");
+    }
+    screenRecoveryDone = true;
+  }
+
   audio.loop();
   wm.process();
 
@@ -547,7 +638,7 @@ void loop()
   }
 
   readVolumeValue();
-  lv_task_handler();
+  lv_timer_handler();
   processButtons();
   countTime();
   processEncoder();

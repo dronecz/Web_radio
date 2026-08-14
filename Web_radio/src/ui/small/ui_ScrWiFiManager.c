@@ -30,7 +30,7 @@ void ui_ScrWiFiManager_screen_init(void)
     lv_obj_set_y(ui_ScrWmLbl0, -100);
     lv_obj_set_align(ui_ScrWmLbl0, LV_ALIGN_CENTER);
     lv_label_set_text(ui_ScrWmLbl0, "No WiFi connection was found. ");
-    lv_obj_set_style_text_font(ui_ScrWmLbl0, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_ScrWmLbl0, &ui_font_Roboto_Reg_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_ScrWmLbl1 = lv_label_create(ui_ScrWiFiManager);
     lv_obj_set_width(ui_ScrWmLbl1, LV_SIZE_CONTENT);   /// 1
@@ -39,7 +39,7 @@ void ui_ScrWiFiManager_screen_init(void)
     lv_obj_set_y(ui_ScrWmLbl1, -65);
     lv_obj_set_align(ui_ScrWmLbl1, LV_ALIGN_CENTER);
     lv_label_set_text(ui_ScrWmLbl1, "Please connect to");
-    lv_obj_set_style_text_font(ui_ScrWmLbl1, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_ScrWmLbl1, &ui_font_Roboto_Reg_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_ScrWmLblAP = lv_label_create(ui_ScrWiFiManager);
     lv_obj_set_width(ui_ScrWmLblAP, LV_SIZE_CONTENT);   /// 1
@@ -50,7 +50,7 @@ void ui_ScrWiFiManager_screen_init(void)
     lv_label_set_text(ui_ScrWmLblAP, "MusicPlayerAP");
     lv_obj_set_style_text_color(ui_ScrWmLblAP, lv_color_hex(0xFF0000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_ScrWmLblAP, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_ScrWmLblAP, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_ScrWmLblAP, &ui_font_Roboto_Reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_ScrWmLbl2 = lv_label_create(ui_ScrWiFiManager);
     lv_obj_set_width(ui_ScrWmLbl2, LV_SIZE_CONTENT);   /// 1
@@ -67,7 +67,7 @@ void ui_ScrWiFiManager_screen_init(void)
     lv_label_set_text(ui_ScrWmLblAddress, "192.168.4.1");
     lv_obj_set_style_text_color(ui_ScrWmLblAddress, lv_color_hex(0xFF0000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_ScrWmLblAddress, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_ScrWmLblAddress, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_ScrWmLblAddress, &ui_font_Roboto_Reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_ScrWmLbl3 = lv_label_create(ui_ScrWiFiManager);
     lv_obj_set_width(ui_ScrWmLbl3, LV_SIZE_CONTENT);   /// 1

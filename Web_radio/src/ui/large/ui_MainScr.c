@@ -83,7 +83,7 @@ void ui_MainScr_screen_init(void)
     lv_obj_set_y(ui_LblDate, 40);
     lv_obj_set_align(ui_LblDate, LV_ALIGN_CENTER);
     lv_label_set_text(ui_LblDate, "31.12.2025");
-    lv_obj_set_style_text_font(ui_LblDate, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_LblDate, &ui_font_Roboto_Reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_CntnrWeather = lv_obj_create(ui_MainScr);
     lv_obj_remove_style_all(ui_CntnrWeather);

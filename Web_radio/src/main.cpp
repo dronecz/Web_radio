@@ -1968,18 +1968,24 @@ static void handle_audio_process_i2s(int32_t *outBuff, int32_t validSamples, boo
   *continueI2S = true;
 }
 
-// Force exact symbol names of ESP32-audioI2S weak callbacks (C++ mangled):
-// _Z25audio_process_raw_samplesPls  -> void audio_process_raw_samples(long*, short)
-// _Z17audio_process_i2sPlsPb       -> void audio_process_i2s(long*, short, bool*)
-extern "C" void audio_process_raw_samples_bridge(long *outBuff, short validSamples) asm("_Z25audio_process_raw_samplesPls");
-extern "C" void audio_process_i2s_bridge(long *outBuff, short validSamples, bool *continueI2S) asm("_Z17audio_process_i2sPlsPb");
+// Provide both callback signatures to stay compatible with older and newer
+// ESP32-audioI2S builds (the 32-bit sample type changed from long* to int32_t*).
+void audio_process_raw_samples(int32_t *outBuff, int16_t validSamples)
+{
+  handle_audio_process_raw_samples(outBuff, (int32_t)validSamples);
+}
 
-extern "C" void audio_process_raw_samples_bridge(long *outBuff, short validSamples)
+void audio_process_i2s(int32_t *outBuff, int16_t validSamples, bool *continueI2S)
+{
+  handle_audio_process_i2s(outBuff, (int32_t)validSamples, continueI2S);
+}
+
+void audio_process_raw_samples(long *outBuff, short validSamples)
 {
   handle_audio_process_raw_samples(reinterpret_cast<int32_t *>(outBuff), (int32_t)validSamples);
 }
 
-extern "C" void audio_process_i2s_bridge(long *outBuff, short validSamples, bool *continueI2S)
+void audio_process_i2s(long *outBuff, short validSamples, bool *continueI2S)
 {
   handle_audio_process_i2s(reinterpret_cast<int32_t *>(outBuff), (int32_t)validSamples, continueI2S);
 }
